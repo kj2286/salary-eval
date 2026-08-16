@@ -1,5 +1,18 @@
 # HANDOFF — 수학비서 IT 직군 연봉 평가/산정 앱
 
+## 마지막 작업 (2026-08-16) — **외부 공개 배포 완료 (GitHub Pages)**
+- 공개 URL: **https://kj2286.github.io/salary-eval/** (로그인 없이 누구나 접근, 검증 완료)
+- 리포: https://github.com/kj2286/salary-eval (public, `main` = 소스 / `gh-pages` = 빌드 산출물)
+- 재배포: `npm run deploy` (빌드 → gh-pages 워크트리 반영 → 푸시. `scripts/deploy-pages.sh`)
+  ※ `dist/` 는 빌드마다 비워지므로 배포 이력은 git worktree 로 분리해 둠(nested .git 금지).
+- `vite.config.js` 에 `base: './'` 추가 — 하위 경로(/salary-eval/) 서빙 대응.
+- ⚠️ **Vercel 은 포기함**: `salary-eval-gangs-5471s-projects.vercel.app` 로 배포는 성공(READY)했으나
+  Deployment Protection(Vercel Authentication)이 켜져 있어 외부인은 로그인 화면을 봄
+  (302 → vercel.com/sso-api 로 확인). 무료 플랜에서 이 보호 해제가 유료 기능이라 GitHub Pages 로 전환.
+  Vercel 프로젝트는 남아 있음(삭제하려면 대시보드에서 제거).
+- ⚠️ `salary-eval.vercel.app` 은 **타인 프로젝트**(일본어 인사 시스템) — 우리 주소 아님, 혼동 주의.
+- 검증: 공개 URL 200 + JS/CSS 200 + 헤드리스 렌더 정상(빈 상태 화면), 재배포 후 타이틀 갱신 확인.
+
 ## 마지막 작업 (2026-08-14, 2차) — **분기 평가 + 직원 명부 구조로 전환 완료**
 - 요청: "평가항목은 매분기마다 할 수 있게 / 등록된 직원을 선택하는 UI로. 매번 새로 만들지 말 것."
 - 데이터 모델 전환(v1 → v2): `employees`(명부) / `evaluations`(직원×분기 1건) / `drafts`(저장 전 편집분,
