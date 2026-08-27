@@ -100,7 +100,7 @@ export default function EmployeeDialog({ open, employee, onClose, onSubmit, onDe
 
           <Field
             label="커리어 레벨"
-            hint="레벨이 평가 문항의 가중치와 보상 밴드를 결정합니다. 연차가 아니라 '맡고 있는 일의 범위'로 정하세요."
+            hint="레벨이 평가 문항과 도메인 가중치를 결정합니다. 연차가 아니라 '맡고 있는 일의 범위'로 정하세요."
           >
             <div className="grid grid-cols-5 gap-1.5">
               {LEVELS.map((level) => {
