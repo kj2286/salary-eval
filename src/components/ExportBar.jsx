@@ -19,17 +19,14 @@ import {
 } from '../lib/exporters.js'
 import { todayISO } from '../lib/format.js'
 
-const SCOPES = [
-  { id: 'quarter', label: '이번 분기' },
-  { id: 'all', label: '전체 분기' },
-]
-
-/** 내보내기 — CSV/TSV/시트 전송은 선택한 범위, JSON 백업은 명부까지 통째로 */
+/** 내보내기 — CSV/TSV/시트 전송은 선택한 범위, JSON 백업은 명부·정책까지 통째로 */
 export default function ExportBar({
   quarter,
   quarterEvaluations,
   allEvaluations,
   employees,
+  decisions,
+  settings,
   webhook,
   onWebhookChange,
   onImport,
@@ -40,11 +37,15 @@ export default function ExportBar({
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sending, setSending] = useState(false)
 
+  const scopes = [
+    { id: 'quarter', label: quarter },
+    { id: 'all', label: '전체' },
+  ]
   const records = scope === 'quarter' ? quarterEvaluations : allEvaluations
   const suffix = scope === 'quarter' ? quarter : '전체'
 
   const guard = (fn) => () => {
-    if (!records.length) return onToast('내보낼 평가가 없습니다.', 'error')
+    if (!records.length) return onToast('내보낼 기록이 없습니다.', 'error')
     fn()
   }
 
@@ -54,8 +55,8 @@ export default function ExportBar({
 
   const handleJson = () =>
     downloadFile(
-      `연봉평가_백업_${todayISO()}.json`,
-      toJson({ employees, evaluations: allEvaluations }),
+      `평가보상_백업_${todayISO()}.json`,
+      toJson({ employees, evaluations: allEvaluations, decisions, settings }),
       'application/json',
     )
 
@@ -74,11 +75,21 @@ export default function ExportBar({
       const parsed = JSON.parse(await file.text())
       const employeeRows = parsed.employees ?? []
       const evaluationRows = parsed.evaluations ?? (Array.isArray(parsed) ? parsed : [])
+      const decisionRows = parsed.decisions ?? []
       if (!employeeRows.length && !evaluationRows.length) {
         throw new Error('employees / evaluations 를 찾을 수 없습니다.')
       }
-      onImport({ employees: employeeRows, evaluations: evaluationRows })
-      onToast(`직원 ${employeeRows.length}명 · 평가 ${evaluationRows.length}건을 불러왔습니다.`)
+      if (parsed.version === 2) {
+        onToast('v2 백업입니다 — 레벨 정보가 없어 전원 L2(주니어)로 들어옵니다. 확인 후 조정하세요.')
+      }
+      onImport({
+        employees: employeeRows,
+        evaluations: evaluationRows,
+        decisions: decisionRows,
+      })
+      onToast(
+        `직원 ${employeeRows.length}명 · 평가 ${evaluationRows.length}건 · 확정 ${decisionRows.length}건을 불러왔습니다.`,
+      )
     } catch (err) {
       onToast(`불러오기 실패: ${err.message}`, 'error')
     } finally {
@@ -87,7 +98,7 @@ export default function ExportBar({
   }
 
   const handleSend = async () => {
-    if (!records.length) return onToast('내보낼 평가가 없습니다.', 'error')
+    if (!records.length) return onToast('내보낼 기록이 없습니다.', 'error')
     setSending(true)
     try {
       const { sent } = await sendToSheets(webhook, records)
@@ -103,7 +114,7 @@ export default function ExportBar({
     <div className="no-print">
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex rounded-xl bg-slate-100 p-0.5">
-          {SCOPES.map((s) => (
+          {scopes.map((s) => (
             <button
               key={s.id}
               type="button"

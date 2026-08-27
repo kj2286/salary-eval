@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react'
 import { CircleDashed, Pencil, Search, UserPlus, Users } from 'lucide-react'
 import { Card, CardHeader, inputClass } from './ui.jsx'
 import { ROLES, ROLE_MAP } from '../data/roles.js'
+import { LEVEL_MAP } from '../data/levels.js'
 import { formatKoreanWon } from '../lib/format.js'
-import { gradeOf } from '../lib/grading.js'
+import { GRADE_MAP } from '../lib/grading.js'
 
 /**
  * 등록된 직원 목록에서 평가 대상을 고른다.
@@ -84,6 +85,7 @@ export default function EmployeeRoster({
       <ul className="max-h-[420px] space-y-1 overflow-y-auto px-2 pb-3">
         {visible.map((employee) => {
           const role = ROLE_MAP[employee.roleId]
+          const level = LEVEL_MAP[employee.levelId] ?? LEVEL_MAP.L2
           const status = statusOf(employee.id)
           const selected = employee.id === selectedId
           return (
@@ -116,8 +118,15 @@ export default function EmployeeRoster({
                       ) : null}
                     </span>
                     <span
-                      className={`block truncate text-[11px] ${selected ? 'text-slate-300' : 'text-slate-400'}`}
+                      className={`flex items-center gap-1 truncate text-[11px] ${selected ? 'text-slate-300' : 'text-slate-400'}`}
                     >
+                      <span
+                        className={`rounded px-1 py-px text-[10px] font-semibold ${
+                          selected ? 'bg-white/15 text-white' : level.theme.chip
+                        }`}
+                      >
+                        {level.short}
+                      </span>
                       {formatKoreanWon(employee.currentSalary)}
                     </span>
                   </span>
@@ -152,11 +161,11 @@ export default function EmployeeRoster({
 
 function StatusBadge({ status, selected }) {
   if (status.state === 'saved') {
-    const grade = gradeOf(status.average)
+    const grade = GRADE_MAP[status.grade] ?? GRADE_MAP.B
     return (
       <span
         className={`grid size-6 shrink-0 place-items-center rounded-lg text-[11px] font-bold ${grade.badge}`}
-        title={`평균 ${status.average.toFixed(2)} · ${grade.key}등급`}
+        title={`가중 점수 ${Number(status.score).toFixed(2)} · ${grade.key}등급`}
       >
         {grade.key}
       </span>

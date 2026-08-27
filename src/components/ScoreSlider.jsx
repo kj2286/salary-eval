@@ -3,8 +3,11 @@ import { SCORE_LABELS } from '../data/roles.js'
 const MIN = 1
 const MAX = 5
 
-/** 항목 1개의 점수 입력 — 슬라이더 + 숫자 입력이 같은 값을 공유한다 */
-export default function ScoreSlider({ criterion, index, value, accent, onChange }) {
+/**
+ * 항목 1개의 점수 입력.
+ * anchor 는 "이 레벨에서 이 항목의 기대 행동" — 같은 문항이라도 L1 과 L5 의 3점이 다르다.
+ */
+export default function ScoreSlider({ criterion, index, value, accent, anchor, onChange }) {
   const score = Number(value) || MIN
   const percent = ((score - MIN) / (MAX - MIN)) * 100
   const inputId = `score-${criterion.id}`
@@ -26,6 +29,13 @@ export default function ScoreSlider({ criterion, index, value, accent, onChange 
             <span className="text-sm font-medium text-slate-900">{criterion.label}</span>
           </span>
           <span className="mt-1 block pl-7 text-xs text-slate-400">{criterion.hint}</span>
+          {anchor ? (
+            <span className="mt-1.5 block pl-7">
+              <span className="inline-block rounded-lg bg-slate-50 px-2 py-1 text-[11px] leading-relaxed text-slate-500">
+                이 레벨 기대: {anchor}
+              </span>
+            </span>
+          ) : null}
         </label>
 
         <div className="flex shrink-0 items-center gap-2">

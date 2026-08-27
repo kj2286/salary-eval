@@ -1,11 +1,17 @@
 import { ClipboardList, Trash2 } from 'lucide-react'
 import { Card, CardHeader } from './ui.jsx'
-import { ROLE_MAP } from '../data/roles.js'
-import { formatNumber } from '../lib/format.js'
-import { calcSalary, gradeOf } from '../lib/grading.js'
+import { ROLE_MAP, DOMAINS } from '../data/roles.js'
+import { LEVEL_MAP } from '../data/levels.js'
+import { GRADE_MAP } from '../lib/grading.js'
 import { quarterLabel } from '../lib/quarters.js'
 
-/** 선택한 분기의 전 직원 현황 — 미평가자도 행으로 남겨 누락을 드러낸다 */
+/**
+ * 선택한 분기의 전 직원 평가 현황.
+ *
+ * 예전 표에는 인상률·인상금액·조정후연봉이 들어 있었다. 뺐다 —
+ * 분기 표에 연봉 열이 있으면 "분기마다 연봉을 올린다"는 오해가 그대로 운영에 들어온다.
+ * 보상은 [연간 보상 확정] 탭에서만 다룬다.
+ */
 export default function QuarterTable({
   quarter,
   employees,
@@ -15,17 +21,6 @@ export default function QuarterTable({
   actions,
 }) {
   const evaluated = employees.map((e) => evaluationOf(e.id)).filter(Boolean)
-  const totals = evaluated.reduce(
-    (acc, r) => {
-      const s = calcSalary(r.currentSalary, r.finalRate)
-      acc.base += s.base
-      acc.raise += s.raiseAmount
-      acc.next += s.newSalary
-      return acc
-    },
-    { base: 0, raise: 0, next: 0 },
-  )
-  const totalRate = totals.base ? (totals.raise / totals.base) * 100 : 0
 
   return (
     <Card>
@@ -34,7 +29,7 @@ export default function QuarterTable({
         title={`${quarterLabel(quarter)} 평가 현황`}
         description={
           employees.length
-            ? `${evaluated.length}/${employees.length}명 완료 · 인상 재원 ${formatNumber(totals.raise)}원 (평균 ${totalRate.toFixed(1)}%)`
+            ? `${evaluated.length}/${employees.length}명 완료 · 미평가자도 행으로 남겨 누락을 드러냅니다.`
             : '등록된 직원이 없습니다.'
         }
         right={actions}
@@ -42,27 +37,27 @@ export default function QuarterTable({
 
       {employees.length ? (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[880px] text-sm">
+          <table className="w-full min-w-[820px] text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-left text-[11px] font-medium text-slate-500">
                 <th className="px-5 py-2.5">이름</th>
-                <th className="px-3 py-2.5">직무</th>
-                <th className="px-3 py-2.5 text-right">평균</th>
+                <th className="px-3 py-2.5">직무 · 레벨</th>
+                <th className="px-3 py-2.5 text-right">가중 점수</th>
                 <th className="px-3 py-2.5 text-center">등급</th>
-                <th className="px-3 py-2.5 text-right">현재 연봉</th>
-                <th className="px-3 py-2.5 text-right">인상률</th>
-                <th className="px-3 py-2.5 text-right">인상 금액</th>
-                <th className="px-3 py-2.5 text-right">조정 후 연봉</th>
-                <th className="px-3 py-2.5 text-right">월(세전)</th>
+                {DOMAINS.map((d) => (
+                  <th key={d.id} className="px-3 py-2.5 text-right">
+                    {d.label}
+                  </th>
+                ))}
                 <th className="px-5 py-2.5 text-right no-print">관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {employees.map((employee) => {
                 const role = ROLE_MAP[employee.roleId]
+                const level = LEVEL_MAP[employee.levelId] ?? LEVEL_MAP.L2
                 const record = evaluationOf(employee.id)
-                const s = record ? calcSalary(record.currentSalary, record.finalRate) : null
-                const grade = record ? gradeOf(record.average) : null
+                const grade = record ? GRADE_MAP[record.grade] : null
 
                 return (
                   <tr
@@ -78,18 +73,23 @@ export default function QuarterTable({
                         {employee.name}
                       </button>
                       <div className="text-[11px] text-slate-400">
-                        {record ? `${record.evaluator || '평가자 미기입'} · ${record.evaluatedAt}` : '미평가'}
+                        {record
+                          ? `${record.evaluator || '평가자 미기입'} · ${record.updatedAt}${record.legacy ? ' · 구버전 기록' : ''}`
+                          : '미평가'}
                       </div>
                     </td>
                     <td className="px-3 py-3">
                       <span
                         className={`rounded-lg px-2 py-1 text-[11px] font-medium ${role?.theme.soft ?? 'bg-slate-100'} ${role?.theme.text ?? 'text-slate-500'}`}
                       >
-                        {role?.label ?? employee.roleId}
+                        {role?.short ?? employee.roleId}
+                      </span>
+                      <span className={`ml-1 rounded-lg px-1.5 py-1 text-[11px] ${level.theme.chip}`}>
+                        {level.short}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-right tabular-nums">
-                      {record ? record.average.toFixed(2) : '—'}
+                    <td className="px-3 py-3 text-right font-medium tabular-nums">
+                      {record ? Number(record.score).toFixed(2) : '—'}
                     </td>
                     <td className="px-3 py-3 text-center">
                       {grade ? (
@@ -108,21 +108,23 @@ export default function QuarterTable({
                         </button>
                       )}
                     </td>
-                    <td className="px-3 py-3 text-right tabular-nums">
-                      {formatNumber(record ? s.base : employee.currentSalary)}
-                    </td>
-                    <td className="px-3 py-3 text-right font-medium tabular-nums">
-                      {record ? `${s.rate.toFixed(1)}%` : '—'}
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums text-emerald-600">
-                      {record ? `+${formatNumber(s.raiseAmount)}` : '—'}
-                    </td>
-                    <td className="px-3 py-3 text-right font-semibold tabular-nums text-slate-900">
-                      {record ? formatNumber(s.newSalary) : '—'}
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums">
-                      {record ? formatNumber(s.monthlyGross) : '—'}
-                    </td>
+                    {DOMAINS.map((d) => {
+                      const cell = record?.byDomain?.[d.id]
+                      return (
+                        <td key={d.id} className="px-3 py-3 text-right tabular-nums">
+                          {cell ? (
+                            <span title={`가중 ${cell.weight}%`}>
+                              {cell.avg.toFixed(1)}
+                              <span className="ml-0.5 text-[10px] text-slate-400">
+                                ·{cell.weight}%
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-300">—</span>
+                          )}
+                        </td>
+                      )
+                    })}
                     <td className="px-5 py-3 text-right no-print">
                       {record ? (
                         <button
@@ -139,27 +141,6 @@ export default function QuarterTable({
                 )
               })}
             </tbody>
-            <tfoot>
-              <tr className="border-t border-slate-100 bg-slate-50/60 text-slate-900">
-                <td className="px-5 py-3 text-xs font-semibold" colSpan={4}>
-                  합계 (평가 완료 {evaluated.length}명)
-                </td>
-                <td className="px-3 py-3 text-right text-xs font-semibold tabular-nums">
-                  {formatNumber(totals.base)}
-                </td>
-                <td className="px-3 py-3 text-right text-xs font-semibold tabular-nums">
-                  {totalRate.toFixed(1)}%
-                </td>
-                <td className="px-3 py-3 text-right text-xs font-semibold tabular-nums text-emerald-600">
-                  +{formatNumber(totals.raise)}
-                </td>
-                <td className="px-3 py-3 text-right text-xs font-semibold tabular-nums">
-                  {formatNumber(totals.next)}
-                </td>
-                <td className="px-3 py-3" />
-                <td className="px-5 py-3 no-print" />
-              </tr>
-            </tfoot>
           </table>
         </div>
       ) : (

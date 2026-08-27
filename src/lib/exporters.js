@@ -1,43 +1,83 @@
-import { ROLE_MAP } from '../data/roles.js'
-import { calcSalary, gradeOf, rateRangeText } from './grading.js'
+import { CORE_CRITERIA, ROLE_MAP } from '../data/roles.js'
+import { LEVEL_MAP } from '../data/levels.js'
+import { GRADE_MAP, calcSalary, compaRatio } from './grading.js'
+import { bandFor } from '../data/market.js'
 import { quarterLabel } from './quarters.js'
 
 /**
- * 평가 레코드 1건 → "평평한 한 줄".
- * CSV / TSV(구글 시트 붙여넣기) / 웹훅 전송이 모두 이 형태를 공유한다.
- * 이름·직무·연봉은 평가 시점 스냅샷을 그대로 쓴다(이후 명부가 바뀌어도 과거 평가는 불변).
+ * 레코드 1건 → "평평한 한 줄". CSV / TSV / 웹훅이 모두 이 형태를 공유한다.
+ * 분기 평가와 연간 보상 확정은 성격이 다르므로 행 모양도 다르다 (year 필드로 구분).
  */
-export function toRow(record) {
+export const toRow = (record) =>
+  record?.year != null ? toDecisionRow(record) : toEvaluationRow(record)
+
+/** 분기 평가 — 보상 정보는 들어가지 않는다 */
+export function toEvaluationRow(record) {
   const role = ROLE_MAP[record.roleId]
-  const salary = calcSalary(record.currentSalary, record.finalRate)
-  const grade = gradeOf(record.average)
+  const level = LEVEL_MAP[record.levelId] ?? LEVEL_MAP.L2
+  const grade = GRADE_MAP[record.grade] ?? GRADE_MAP.B
 
   const row = {
+    구분: '분기평가',
     분기: quarterLabel(record.quarter),
-    평가일: record.evaluatedAt,
+    평가일: record.updatedAt ?? record.evaluatedAt,
     평가자: record.evaluator ?? '',
     이름: record.name,
     직무: role?.label ?? record.roleId,
+    레벨: `${level.short} ${level.label}`,
   }
 
-  ;(role?.criteria ?? []).forEach((c, i) => {
-    row[`항목${i + 1}_명`] = c.label
-    row[`항목${i + 1}_점수`] = record.scores[c.id] ?? ''
+  // 도메인 점수 + 그 레벨에서의 가중치
+  for (const [domainId, d] of Object.entries(record.byDomain ?? {})) {
+    row[`${domainId}_점수`] = d.avg
+    row[`${domainId}_가중치`] = `${d.weight}%`
+  }
+
+  // 항목별 원점수 — 직무 문항 + 공통 문항
+  const criteria = [...(role?.criteria ?? []), ...CORE_CRITERIA]
+  criteria.forEach((c) => {
+    if (record.scores?.[c.id] != null) row[`항목_${c.label}`] = record.scores[c.id]
   })
 
   Object.assign(row, {
-    평균점수: record.average.toFixed(2),
+    가중점수: Number(record.score ?? 0).toFixed(2),
     등급: grade.key,
-    추천인상률: rateRangeText(grade),
+    메모: record.memo ?? '',
+  })
+  return row
+}
+
+/** 연간 보상 확정 */
+export function toDecisionRow(record) {
+  const role = ROLE_MAP[record.roleId]
+  const from = LEVEL_MAP[record.fromLevel] ?? LEVEL_MAP.L2
+  const to = LEVEL_MAP[record.toLevel] ?? from
+  const salary = calcSalary(record.baseSalary, record.finalRate)
+  const band = record.band ?? bandFor(record.roleId, record.toLevel)
+
+  return {
+    구분: '연간확정',
+    연도: `${record.year}년`,
+    확정일: record.decidedAt,
+    결정자: record.evaluator ?? '',
+    이름: record.name,
+    직무: role?.label ?? record.roleId,
+    레벨: from.id === to.id ? `${to.short} ${to.label}` : `${from.short} → ${to.short} (승급)`,
+    평가분기수: record.quarterCount,
+    연간점수: Number(record.annualScore ?? 0).toFixed(2),
+    등급: record.grade,
+    '밴드중위값': band?.mid ?? '',
+    'compa-ratio(전)': `${((compaRatio(record.baseSalary, band) ?? 0) * 100).toFixed(0)}%`,
+    'compa-ratio(후)': `${((compaRatio(salary.newSalary, band) ?? 0) * 100).toFixed(0)}%`,
+    '성과인상률': `${Number(record.merit).toFixed(1)}%`,
+    '승급인상률': `${Number(record.promotion).toFixed(1)}%`,
     확정인상률: `${Number(record.finalRate).toFixed(1)}%`,
     현재연봉: salary.base,
     인상금액: salary.raiseAmount,
     조정후연봉: salary.newSalary,
-    '월수령액(세전)': salary.monthlyGross,
+    '월지급액(세전)': salary.monthlyGross,
     메모: record.memo ?? '',
-  })
-
-  return row
+  }
 }
 
 /** 여러 직무가 섞여도 열이 어긋나지 않도록 모든 키의 합집합을 헤더로 쓴다 */
@@ -75,15 +115,17 @@ export function toTsv(records) {
   ].join('\n')
 }
 
-/** 백업/복원용 — 명부와 평가를 함께 담는다 */
-export function toJson({ employees, evaluations }) {
+/** 백업/복원용 — 명부·분기평가·연간확정·정책을 함께 담는다 */
+export function toJson({ employees, evaluations, decisions, settings }) {
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
       app: 'mathsecretary-salary-eval',
-      version: 2,
+      version: 3,
       employees,
       evaluations,
+      decisions: decisions ?? [],
+      settings: settings ?? null,
     },
     null,
     2,

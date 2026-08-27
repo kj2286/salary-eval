@@ -2,9 +2,17 @@ import { useEffect, useState } from 'react'
 import { Trash2, X } from 'lucide-react'
 import { Button, Field, inputClass } from './ui.jsx'
 import { ROLES } from '../data/roles.js'
+import { LEVELS } from '../data/levels.js'
 import { formatKoreanWon, formatNumber, parseNumber } from '../lib/format.js'
 
-const EMPTY = { name: '', roleId: ROLES[0].id, currentSalary: 40_000_000, joinedAt: '', active: true }
+const EMPTY = {
+  name: '',
+  roleId: ROLES[0].id,
+  levelId: 'L2',
+  currentSalary: 40_000_000,
+  joinedAt: '',
+  active: true,
+}
 
 /** 직원 등록/수정 모달 — 직무와 현재 연봉은 여기서 한 번만 정하고 평가 화면에서는 고른다 */
 export default function EmployeeDialog({ open, employee, onClose, onSubmit, onDelete }) {
@@ -68,7 +76,7 @@ export default function EmployeeDialog({ open, employee, onClose, onSubmit, onDe
             />
           </Field>
 
-          <Field label="직무" hint="선택한 직무의 6개 평가 항목이 평가 화면에 표시됩니다.">
+          <Field label="직무" hint="직무는 전문역량(성과·전문성) 문항을 결정합니다.">
             <div className="grid grid-cols-2 gap-2">
               {ROLES.map((role) => {
                 const active = form.roleId === role.id
@@ -91,6 +99,41 @@ export default function EmployeeDialog({ open, employee, onClose, onSubmit, onDe
                 )
               })}
             </div>
+          </Field>
+
+          <Field
+            label="커리어 레벨"
+            hint="레벨이 평가 문항의 가중치와 보상 밴드를 결정합니다. 연차가 아니라 '맡고 있는 일의 범위'로 정하세요."
+          >
+            <div className="grid grid-cols-5 gap-1.5">
+              {LEVELS.map((level) => {
+                const active = form.levelId === level.id
+                return (
+                  <button
+                    key={level.id}
+                    type="button"
+                    onClick={() => patch({ levelId: level.id })}
+                    title={`${level.scope} · ${level.years}`}
+                    className={`rounded-xl border px-1 py-2 text-center transition-colors ${
+                      active
+                        ? 'border-transparent bg-slate-900 text-white'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="block text-xs font-semibold">{level.short}</span>
+                    <span
+                      className={`block text-[10px] ${active ? 'text-slate-300' : 'text-slate-400'}`}
+                    >
+                      {level.label}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <p className="mt-1.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-[11px] leading-relaxed text-slate-500">
+              {LEVELS.find((l) => l.id === form.levelId)?.scope} —{' '}
+              {LEVELS.find((l) => l.id === form.levelId)?.accountability}
+            </p>
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-2">
