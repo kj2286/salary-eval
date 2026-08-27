@@ -3,7 +3,6 @@ import { CircleDashed, Pencil, Search, UserPlus, Users } from 'lucide-react'
 import { Card, CardHeader, inputClass } from './ui.jsx'
 import { ROLES, ROLE_MAP } from '../data/roles.js'
 import { LEVEL_MAP } from '../data/levels.js'
-import { formatKoreanWon } from '../lib/format.js'
 import { GRADE_MAP } from '../lib/grading.js'
 
 /**
@@ -127,7 +126,7 @@ export default function EmployeeRoster({
                       >
                         {level.short}
                       </span>
-                      {formatKoreanWon(employee.currentSalary)}
+                      {role?.label ?? employee.roleId}
                     </span>
                   </span>
                 </button>
@@ -172,6 +171,22 @@ function StatusBadge({ status, selected }) {
     )
   }
   if (status.state === 'draft') {
+    // 연간 모드에서는 "잠정 등급 + 미확정" 을 함께 보여준다
+    if (status.grade) {
+      const grade = GRADE_MAP[status.grade] ?? GRADE_MAP.B
+      return (
+        <span
+          className="flex shrink-0 items-center gap-1"
+          title={`잠정 ${grade.key}등급 · ${status.label ?? '미확정'}`}
+        >
+          <span
+            className={`grid size-6 place-items-center rounded-lg text-[11px] font-bold ${grade.badge} opacity-50`}
+          >
+            {grade.key}
+          </span>
+        </span>
+      )
+    }
     return (
       <span
         className="shrink-0 rounded-lg bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"

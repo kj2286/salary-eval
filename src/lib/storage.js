@@ -24,10 +24,17 @@ export function usePersistentState(key, initialValue) {
 }
 
 export const STORAGE_KEYS = {
+  employees: 'salary-eval:employees:v4',
+  evaluations: 'salary-eval:evaluations:v4', // 분기 평가
+  decisions: 'salary-eval:decisions:v4', // 연간 등급 확정 (직원×연도 1건)
+  drafts: 'salary-eval:drafts:v4',
+  settings: 'salary-eval:settings:v4',
+}
+
+const V3_KEYS = {
   employees: 'salary-eval:employees:v3',
-  evaluations: 'salary-eval:evaluations:v3', // 분기 평가 (보상 정보 없음)
-  decisions: 'salary-eval:decisions:v3', // 연간 보상 확정 (직원×연도 1건)
-  drafts: 'salary-eval:drafts:v3',
+  evaluations: 'salary-eval:evaluations:v3',
+  decisions: 'salary-eval:decisions:v3',
   settings: 'salary-eval:settings:v3',
 }
 
@@ -49,11 +56,12 @@ export const newId = (prefix) =>
  */
 export function migrateV2() {
   try {
-    if (localStorage.getItem(STORAGE_KEYS.employees)) return null // 이미 v3
+    if (localStorage.getItem(STORAGE_KEYS.employees)) return null // 이미 v4
+    if (localStorage.getItem(V3_KEYS.employees)) return migrateV3()
     const rawEmp = localStorage.getItem(V2_KEYS.employees)
     if (!rawEmp) return null
 
-    const employees = (JSON.parse(rawEmp) ?? []).map((e) => ({
+    const employees = (JSON.parse(rawEmp) ?? []).map(({ currentSalary, ...e }) => ({
       ...e,
       levelId: e.levelId ?? 'L2', // v2 에는 레벨 개념이 없었다 → 주니어로 두고 사용자가 조정
     }))
@@ -66,7 +74,6 @@ export function migrateV2() {
         roleId: r.roleId,
         levelId: 'L2',
         name: r.name,
-        currentSalary: r.currentSalary,
         evaluator: r.evaluator ?? '',
         scores: {},
         score: Number(r.average) || 0,
@@ -90,7 +97,48 @@ export function migrateV2() {
       JSON.stringify({ evaluator: oldSettings.evaluator ?? '', webhook: oldSettings.webhook ?? '' }),
     )
 
-    return { employees: employees.length, evaluations: evaluations.length }
+    return { from: 'v2', employees: employees.length, evaluations: evaluations.length }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * v3 → v4 마이그레이션.
+ *
+ * v3 는 연봉 금액을 저장했다. v4 는 저장하지 않는다 — 평가는 리더가 하고 금액은 HR 만 안다.
+ * 금액 필드(currentSalary / baseSalary / newSalary / band)는 **옮기지 않는다.**
+ * v3 키는 지우지 않으므로 예전 데이터가 필요하면 브라우저 저장소에 그대로 남아 있다.
+ *
+ * 등급은 v3 의 절대 컷오프로 매겨진 값이다. v4 는 상대평가라 화면에서 재배분되므로
+ * 저장된 등급은 참고값으로만 남기고 `regraded: false` 로 표시한다.
+ */
+export function migrateV3() {
+  try {
+    const employees = (JSON.parse(localStorage.getItem(V3_KEYS.employees) ?? '[]') ?? []).map(
+      ({ currentSalary, ...e }) => e,
+    )
+    const evaluations = (JSON.parse(localStorage.getItem(V3_KEYS.evaluations) ?? '[]') ?? []).map(
+      ({ currentSalary, ...r }) => r,
+    )
+    const decisions = (JSON.parse(localStorage.getItem(V3_KEYS.decisions) ?? '[]') ?? []).map(
+      ({ baseSalary, newSalary, band, targetBand, ...d }) => d,
+    )
+    const old = JSON.parse(localStorage.getItem(V3_KEYS.settings) ?? '{}') ?? {}
+
+    localStorage.setItem(STORAGE_KEYS.employees, JSON.stringify(employees))
+    localStorage.setItem(STORAGE_KEYS.evaluations, JSON.stringify(evaluations))
+    localStorage.setItem(STORAGE_KEYS.decisions, JSON.stringify(decisions))
+    localStorage.setItem(
+      STORAGE_KEYS.settings,
+      JSON.stringify({
+        evaluator: old.evaluator ?? '',
+        webhook: old.webhook ?? '',
+        budget: old.budget ?? 4.5,
+        // bandOverrides 는 금액이라 옮기지 않는다
+      }),
+    )
+    return { from: 'v3', employees: employees.length, evaluations: evaluations.length }
   } catch {
     return null
   }

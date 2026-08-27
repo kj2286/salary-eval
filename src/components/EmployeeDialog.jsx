@@ -3,13 +3,10 @@ import { Trash2, X } from 'lucide-react'
 import { Button, Field, inputClass } from './ui.jsx'
 import { ROLES } from '../data/roles.js'
 import { LEVELS } from '../data/levels.js'
-import { formatKoreanWon, formatNumber, parseNumber } from '../lib/format.js'
-
 const EMPTY = {
   name: '',
   roleId: ROLES[0].id,
   levelId: 'L2',
-  currentSalary: 40_000_000,
   joinedAt: '',
   active: true,
 }
@@ -136,30 +133,19 @@ export default function EmployeeDialog({ open, employee, onClose, onSubmit, onDe
             </p>
           </Field>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="현재 연봉 (원)"
-              htmlFor="dlg-salary"
-              hint={formatKoreanWon(form.currentSalary)}
-            >
-              <input
-                id="dlg-salary"
-                inputMode="numeric"
-                value={form.currentSalary ? formatNumber(form.currentSalary) : ''}
-                onChange={(e) => patch({ currentSalary: parseNumber(e.target.value) })}
-                className={`${inputClass} text-right font-semibold tabular-nums`}
-              />
-            </Field>
-            <Field label="입사일 (선택)" htmlFor="dlg-joined">
-              <input
-                id="dlg-joined"
-                type="date"
-                value={form.joinedAt ?? ''}
-                onChange={(e) => patch({ joinedAt: e.target.value })}
-                className={inputClass}
-              />
-            </Field>
-          </div>
+          <Field
+            label="입사일 (선택)"
+            htmlFor="dlg-joined"
+            hint="레벨 판단의 참고용입니다. 연봉 금액은 이 앱에 저장하지 않습니다."
+          >
+            <input
+              id="dlg-joined"
+              type="date"
+              value={form.joinedAt ?? ''}
+              onChange={(e) => patch({ joinedAt: e.target.value })}
+              className={inputClass}
+            />
+          </Field>
 
           <label className="flex items-center gap-2 text-sm text-slate-600">
             <input

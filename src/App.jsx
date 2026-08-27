@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  Award,
   CalendarRange,
   CheckCircle2,
-  CircleUser,
   ChevronLeft,
   ChevronRight,
+  CircleUser,
   ListChecks,
   RotateCcw,
   Save,
@@ -20,45 +21,49 @@ import CriteriaGroups from './components/CriteriaGroups.jsx'
 import GradeSummary from './components/GradeSummary.jsx'
 import LevelPanel from './components/LevelPanel.jsx'
 import EvaluationHistory from './components/EvaluationHistory.jsx'
-import CompensationPanel from './components/CompensationPanel.jsx'
+import DecisionPanel from './components/DecisionPanel.jsx'
 import CalibrationPanel from './components/CalibrationPanel.jsx'
 import PolicyDialog from './components/PolicyDialog.jsx'
 import QuarterTable from './components/QuarterTable.jsx'
 import AnnualTable from './components/AnnualTable.jsx'
 import ExportBar from './components/ExportBar.jsx'
+import DeltaBadge from './components/DeltaBadge.jsx'
 import { Button, Card, CardHeader, Field, inputClass } from './components/ui.jsx'
 import { ROLE_MAP, ROLES, criteriaFor, groupedCriteriaFor } from './data/roles.js'
 import { LEVEL_MAP, promotionIncreaseFor } from './data/levels.js'
-import { bandFor } from './data/market.js'
 import {
   BASE_BUDGET,
+  DEFAULT_DISTRIBUTION,
+  DEFAULT_GUARDS,
+  GRADE_MAP,
+  absoluteGradeOf,
   annualRollup,
-  calcSalary,
-  compaRatio,
-  gradeOf,
-  meritRate,
+  assignRelativeGrades,
+  averageRate,
+  borderlinePairs,
+  deltaOf,
   promotionSignal,
+  rateBandFor,
   round1,
   scoreEvaluation,
 } from './lib/grading.js'
-import { STANDING_NOTES, checkCompensation, hasBlocking } from './lib/compliance.js'
-import { formatWon, todayISO } from './lib/format.js'
-import { currentQuarter, parseQuarter, quarterKey, quarterLabel } from './lib/quarters.js'
+import { STANDING_NOTES, checkDecision, hasBlocking } from './lib/compliance.js'
+import { todayISO } from './lib/format.js'
+import { currentQuarter, parseQuarter, quarterKey, quarterLabel, shiftQuarter } from './lib/quarters.js'
 import { STORAGE_KEYS, migrateV2, newId, usePersistentState } from './lib/storage.js'
 
 const SAMPLE_EMPLOYEES = [
-  { name: '김디자', roleId: 'designer', levelId: 'L3', currentSalary: 46_000_000 },
-  { name: '이프론', roleId: 'fe', levelId: 'L2', currentSalary: 42_000_000 },
-  { name: '박백엔', roleId: 'be', levelId: 'L4', currentSalary: 66_000_000 },
-  { name: '최에이', roleId: 'ai', levelId: 'L1', currentSalary: 40_000_000 },
+  { name: '김디자', roleId: 'designer', levelId: 'L3' },
+  { name: '이프론', roleId: 'fe', levelId: 'L2' },
+  { name: '박백엔', roleId: 'be', levelId: 'L4' },
+  { name: '최에이', roleId: 'ai', levelId: 'L1' },
 ]
 
 const MODES = [
   { id: 'quarter', label: '분기 평가', icon: ListChecks },
-  { id: 'annual', label: '연간 보상 확정', icon: Scale },
+  { id: 'annual', label: '연간 등급 확정', icon: Award },
 ]
 
-// v2 데이터가 있으면 v3 로 옮기고 온다 (최초 1회, 렌더 전에 끝나야 한다)
 const MIGRATION = migrateV2()
 
 export default function App() {
@@ -70,7 +75,10 @@ export default function App() {
     evaluator: '',
     webhook: '',
     budget: BASE_BUDGET,
-    bandOverrides: {},
+    distribution: DEFAULT_DISTRIBUTION,
+    guards: DEFAULT_GUARDS,
+    relative: true,
+    relativeScope: 'all',
   })
 
   const [mode, setMode] = useState('quarter')
@@ -82,17 +90,25 @@ export default function App() {
   const [toast, setToast] = useState(null)
 
   const budget = Number(settings.budget) || BASE_BUDGET
-  const bandOverrides = settings.bandOverrides ?? {}
+  const distribution = settings.distribution ?? DEFAULT_DISTRIBUTION
+  const guards = settings.guards ?? DEFAULT_GUARDS
+  const relative = settings.relative !== false
+  const relativeScope = settings.relativeScope ?? 'all'
 
   const showToast = (message, tone = 'success') => setToast({ message, tone })
 
   useEffect(() => {
-    if (MIGRATION) showToast(`이전 버전 데이터를 옮겼습니다 — 직원 ${MIGRATION.employees}명, 평가 ${MIGRATION.evaluations}건. 각 직원의 레벨을 확인해 주세요.`)
+    if (MIGRATION)
+      showToast(
+        MIGRATION.from === 'v3'
+          ? `이전 버전에서 데이터를 옮겼습니다 — 직원 ${MIGRATION.employees}명, 평가 ${MIGRATION.evaluations}건. 연봉 금액은 더 이상 저장하지 않습니다.`
+          : `이전 버전 데이터를 옮겼습니다 — 직원 ${MIGRATION.employees}명, 평가 ${MIGRATION.evaluations}건. 각 직원의 레벨을 확인해 주세요.`,
+      )
   }, [])
 
   useEffect(() => {
     if (!toast) return undefined
-    const t = setTimeout(() => setToast(null), 4200)
+    const t = setTimeout(() => setToast(null), 4600)
     return () => clearTimeout(t)
   }, [toast])
 
@@ -120,12 +136,68 @@ export default function App() {
     return { scores: {}, memo: '' }
   }, [draft, savedEvaluation])
 
-  const groups = useMemo(
-    () => (role ? groupedCriteriaFor(role, level) : []),
-    [role, level],
-  )
+  const groups = useMemo(() => (role ? groupedCriteriaFor(role, level) : []), [role, level])
   const scored = useMemo(() => scoreEvaluation(groups, working.scores), [groups, working.scores])
-  const grade = useMemo(() => gradeOf(scored.score), [scored.score])
+
+  /**
+   * 상대평가 집단(cohort) 만들기.
+   * 비교 대상은 정책에 따라 전체 / 같은 직무 / 같은 레벨.
+   * 선택된 직원이 아직 저장 전이면 작업 중 점수를 넣어 잠정 등급을 계산한다.
+   */
+  const cohortKeyOf = (emp) =>
+    relativeScope === 'role' ? emp.roleId : relativeScope === 'level' ? emp.levelId : 'all'
+
+  const buildCohort = (entries, target) => {
+    if (!relative) return null
+    const key = target ? cohortKeyOf(target) : 'all'
+    const scoped = entries.filter((e) => e.cohort === key)
+    return assignRelativeGrades(scoped, { distribution, guards })
+  }
+
+  // 분기 잠정 등급 — 저장된 평가 + 현재 편집 중인 점수
+  const quarterCohort = useMemo(() => {
+    const entries = employees
+      .map((emp) => {
+        const saved = evaluationOf(emp.id)
+        const isCurrent = employee && emp.id === employee.id
+        const score = isCurrent ? scored.score : saved ? Number(saved.score) : null
+        if (score == null) return null
+        return { id: emp.id, score, cohort: cohortKeyOf(emp) }
+      })
+      .filter(Boolean)
+    return { entries, result: buildCohort(entries, employee) }
+  }, [employees, evaluations, employee, scored.score, relative, relativeScope, distribution, guards])
+
+  const quarterGradeOf = (employeeId) => {
+    if (!relative) {
+      const rec =
+        employee && employeeId === employee.id ? { score: scored.score } : evaluationOf(employeeId)
+      return rec ? absoluteGradeOf(Number(rec.score)).key : null
+    }
+    return quarterCohort.result?.byId[employeeId] ?? null
+  }
+
+  const grade = GRADE_MAP[quarterGradeOf(employee?.id) ?? 'B'] ?? GRADE_MAP.B
+  const myRank = quarterCohort.result?.rankById[employee?.id] ?? null
+  const cohortSize = quarterCohort.entries.filter(
+    (e) => !employee || e.cohort === cohortKeyOf(employee),
+  ).length
+
+  /** 직전 분기 대비 */
+  const quarterDeltaOf = (employeeId) => {
+    const cur = employeeId === employee?.id ? { score: scored.score } : evaluationOf(employeeId)
+    if (!cur) return null
+    const prevQ = shiftQuarter(quarter, -1)
+    const prev = evaluationOf(employeeId, prevQ)
+    if (!prev) return null
+    return {
+      ...deltaOf(
+        { score: cur.score, grade: quarterGradeOf(employeeId) },
+        { score: prev.score, grade: prev.grade },
+      ),
+      label: quarterLabel(prevQ),
+    }
+  }
 
   const patchWorking = (values) =>
     setDrafts((prev) => ({ ...prev, [draftKey]: { ...working, ...values } }))
@@ -133,9 +205,21 @@ export default function App() {
   const setScore = (criterionId, value) =>
     patchWorking({ scores: { ...working.scores, [criterionId]: value } })
 
+  /**
+   * 명부 배지는 지금 보고 있는 화면 기준이어야 한다.
+   * 연간 모드에서 분기 등급을 띄우면 표의 등급과 어긋나 보인다.
+   */
   const statusOf = (employeeId) => {
+    if (mode === 'annual') {
+      const decided = decisionOf(employeeId)
+      if (decided) return { state: 'saved', score: decided.annualScore, grade: decided.grade }
+      const roll = annualRollup(evaluationsOfYear(employeeId))
+      if (roll.count)
+        return { state: 'draft', score: roll.score, grade: annualGradeOf(employeeId), label: '미확정' }
+      return { state: 'empty' }
+    }
     const saved = evaluationOf(employeeId)
-    if (saved) return { state: 'saved', score: saved.score, grade: saved.grade }
+    if (saved) return { state: 'saved', score: saved.score, grade: quarterGradeOf(employeeId) }
     if (drafts[`${employeeId}::${quarter}`]) return { state: 'draft' }
     return { state: 'empty' }
   }
@@ -152,14 +236,13 @@ export default function App() {
       roleId: employee.roleId,
       levelId: employee.levelId,
       name: employee.name,
-      currentSalary: employee.currentSalary,
       evaluator: settings.evaluator.trim(),
       scores: Object.fromEntries(
         criteriaFor(role, level).map((c) => [c.id, Number(working.scores[c.id]) || 3]),
       ),
       score: scored.score,
       byDomain: scored.byDomain,
-      grade: grade.key,
+      grade: grade.key, // 저장 시점의 잠정 등급 (집단이 바뀌면 화면에서 재계산된다)
       memo: (working.memo ?? '').trim(),
       evaluatedAt: savedEvaluation?.evaluatedAt ?? todayISO(),
       updatedAt: todayISO(),
@@ -198,7 +281,7 @@ export default function App() {
     showToast('평가를 삭제했습니다.')
   }
 
-  /* ---------- 연간 보상 확정 ---------- */
+  /* ---------- 연간 등급 확정 ---------- */
 
   const evaluationsOfYear = (employeeId, y = year) =>
     evaluations.filter((r) => r.employeeId === employeeId && r.quarter.startsWith(`${y}-Q`))
@@ -212,39 +295,76 @@ export default function App() {
     [employee, evaluations, year],
   )
 
+  /** 연간 상대평가 집단 — 그 해 평가 기록이 있는 전원 */
+  const annualCohort = useMemo(() => {
+    const entries = employees
+      .map((emp) => {
+        const roll = annualRollup(evaluationsOfYear(emp.id))
+        if (!roll.count) return null
+        return { id: emp.id, score: roll.score, cohort: cohortKeyOf(emp) }
+      })
+      .filter(Boolean)
+    const byCohort = {}
+    for (const key of new Set(entries.map((e) => e.cohort))) {
+      byCohort[key] = assignRelativeGrades(
+        entries.filter((e) => e.cohort === key),
+        { distribution, guards },
+      )
+    }
+    return { entries, byCohort }
+  }, [employees, evaluations, year, relative, relativeScope, distribution, guards])
+
+  const annualResultFor = (employeeId) => {
+    const emp = employees.find((e) => e.id === employeeId)
+    if (!emp) return null
+    return annualCohort.byCohort[cohortKeyOf(emp)] ?? null
+  }
+
+  const annualGradeOf = (employeeId) => {
+    const decided = decisionOf(employeeId)
+    if (decided) return decided.grade
+    if (!relative) {
+      const roll = annualRollup(evaluationsOfYear(employeeId))
+      return roll.count ? absoluteGradeOf(roll.score).key : null
+    }
+    return annualResultFor(employeeId)?.byId[employeeId] ?? null
+  }
+
+  const annualRankOf = (employeeId) => annualResultFor(employeeId)?.rankById[employeeId] ?? null
+
+  /** 직전 연도 확정 대비 */
+  const annualDeltaOf = (employeeId) => {
+    const prev = decisionOf(employeeId, year - 1)
+    if (!prev) return null
+    const roll = annualRollup(evaluationsOfYear(employeeId))
+    if (!roll.count) return null
+    const decided = decisionOf(employeeId)
+    return {
+      ...deltaOf(
+        {
+          score: roll.score,
+          grade: annualGradeOf(employeeId),
+          finalRate: decided?.finalRate ?? null,
+        },
+        { score: prev.annualScore, grade: prev.grade, finalRate: prev.finalRate },
+      ),
+      label: `${year - 1}년`,
+    }
+  }
+
   const decisionKey = employee ? `${employee.id}::annual::${year}` : ''
   const decisionDraft = drafts[decisionKey] ?? null
 
+  const decisionFromLevel = savedDecision ? savedDecision.fromLevel : (employee?.levelId ?? 'L2')
   const proposedLevelId =
     decisionDraft?.toLevel ?? savedDecision?.toLevel ?? employee?.levelId ?? 'L2'
-  // (decisionFromLevel / decisionBase 는 meritBand 계산 직전에 정의된다)
   const decisionMemo = decisionDraft?.memo ?? savedDecision?.memo ?? ''
 
-  /**
-   * 밴드가 둘이다.
-   * - meritBand: 성과 인상의 기준. **현재** 레벨의 밴드다.
-   *   승급 후 밴드로 compa 를 계산하면 "아직 하지 않은 일" 기준으로 시장 대비 낮게 잡혀
-   *   merit 이 부풀고, 거기에 승급 인상까지 더해져 레벨 점프가 이중 반영된다.
-   * - targetBand: 승급 후 착지점. 밴드 상·하한 점검과 게이지 표시에만 쓴다.
-   */
-  /**
-   * 확정 기준 연봉.
-   * 이미 확정한 해를 다시 열면 명부 연봉은 **인상 후** 금액이다. 그걸 기준으로 다시 계산하면
-   * 같은 해에 두 번 인상되는(복리) 사고가 난다. 확정 기록이 있으면 그때의 기준 연봉을 쓴다.
-   */
-  const decisionBase = savedDecision ? savedDecision.baseSalary : (employee?.currentSalary ?? 0)
-  const decisionFromLevel = savedDecision ? savedDecision.fromLevel : (employee?.levelId ?? 'L2')
-
-  const meritBand = employee ? bandFor(employee.roleId, decisionFromLevel, bandOverrides) : null
-  const targetBand = employee ? bandFor(employee.roleId, proposedLevelId, bandOverrides) : null
-  const band = meritBand
-  const compa = employee ? compaRatio(decisionBase, meritBand) : null
-  const recommendedRate = employee
-    ? round1(
-        meritRate(annual.grade?.key ?? 'B', compa, budget) +
-          promotionIncreaseFor(employee.levelId, proposedLevelId),
-      )
-    : 0
+  const annualGradeKey = employee ? (annualGradeOf(employee.id) ?? 'B') : 'B'
+  const recommendedRate = round1(
+    rateBandFor(annualGradeKey, budget).mid +
+      promotionIncreaseFor(decisionFromLevel, proposedLevelId),
+  )
 
   const rateIsAuto =
     decisionDraft?.finalRate === undefined || decisionDraft?.finalRate === null
@@ -256,18 +376,24 @@ export default function App() {
 
   const issues = useMemo(() => {
     if (!employee) return []
-    const { newSalary } = calcSalary(decisionBase, finalRate)
-    return checkCompensation({
-      base: decisionBase,
+    return checkDecision({
       finalRate,
-      newSalary,
-      band: targetBand,
-      gradeKey: annual.grade?.key ?? 'B',
+      gradeKey: annualGradeKey,
       memo: decisionMemo,
       quarterCount: annual.count,
       levelChanged: proposedLevelId !== decisionFromLevel,
+      recommendedRate,
     })
-  }, [employee, decisionBase, finalRate, targetBand, annual, decisionMemo, proposedLevelId, decisionFromLevel])
+  }, [
+    employee,
+    finalRate,
+    annualGradeKey,
+    decisionMemo,
+    annual.count,
+    proposedLevelId,
+    decisionFromLevel,
+    recommendedRate,
+  ])
 
   const patchDecision = (values) =>
     setDrafts((prev) => ({
@@ -284,12 +410,11 @@ export default function App() {
   const confirmDecision = () => {
     if (!employee) return
     if (hasBlocking(issues)) return showToast('해결해야 할 항목이 남아 있습니다.', 'error')
-    if (!annual.count)
-      return showToast(`${year}년에 저장된 분기 평가가 없습니다.`, 'error')
+    if (!annual.count) return showToast(`${year}년에 저장된 분기 평가가 없습니다.`, 'error')
 
-    const merit = meritRate(annual.grade.key, compa, budget)
+    const merit = rateBandFor(annualGradeKey, budget).mid
     const promotion = promotionIncreaseFor(decisionFromLevel, proposedLevelId)
-    const { newSalary } = calcSalary(decisionBase, finalRate)
+    const delta = annualDeltaOf(employee.id)
 
     const record = {
       id: savedDecision?.id ?? newId('dec'),
@@ -301,14 +426,13 @@ export default function App() {
       toLevel: proposedLevelId,
       annualScore: annual.score,
       quarterCount: annual.count,
-      grade: annual.grade.key,
-      band: meritBand,
-      targetBand,
+      grade: annualGradeKey,
+      rank: annualRankOf(employee.id),
+      cohortSize: annualCohort.byCohort[cohortKeyOf(employee)]?.sorted.length ?? 0,
+      delta,
       merit,
       promotion,
       finalRate,
-      baseSalary: decisionBase,
-      newSalary,
       evaluator: settings.evaluator.trim(),
       memo: String(decisionMemo ?? '').trim(),
       decidedAt: todayISO(),
@@ -316,11 +440,10 @@ export default function App() {
 
     if (
       !window.confirm(
-        `${employee.name}의 ${year}년 보상을 ${savedDecision ? '다시 확정' : '확정'}합니다.\n\n` +
-          `등급 ${record.grade} · 성과 ${merit}% + 승급 ${promotion}% → 확정 ${finalRate}%\n` +
-          `${formatWon(decisionBase)} → ${formatWon(newSalary)}\n` +
+        `${employee.name}의 ${year}년 등급을 ${savedDecision ? '다시 확정' : '확정'}합니다.\n\n` +
+          `등급 ${record.grade} · 성과 ${merit}% + 승급 ${promotion}% → 확정 인상률 ${finalRate}%\n` +
           (promotion ? `레벨 ${record.fromLevel} → ${record.toLevel} 승급\n` : '') +
-          `\n명부의 연봉과 레벨이 갱신됩니다.`,
+          `\n연봉 금액은 이 앱에서 다루지 않습니다. HR 에 인상률(%)로 전달됩니다.`,
       )
     )
       return
@@ -328,35 +451,33 @@ export default function App() {
     setDecisions((prev) =>
       savedDecision ? prev.map((d) => (d.id === record.id ? record : d)) : [record, ...prev],
     )
-    setEmployees((prev) =>
-      prev.map((e) =>
-        e.id === employee.id ? { ...e, currentSalary: newSalary, levelId: proposedLevelId } : e,
-      ),
-    )
+    if (promotion)
+      setEmployees((prev) =>
+        prev.map((e) => (e.id === employee.id ? { ...e, levelId: proposedLevelId } : e)),
+      )
     setDrafts((prev) => {
       const next = { ...prev }
       delete next[decisionKey]
       return next
     })
-    showToast(`${employee.name} · ${year}년 보상을 확정했습니다 (${formatWon(newSalary)}).`)
+    showToast(`${employee.name} · ${year}년 등급 ${record.grade} · 인상률 ${finalRate}% 확정.`)
   }
 
   const deleteDecision = (record) => {
     if (
       !window.confirm(
-        `${record.name}의 ${record.year}년 확정을 취소할까요?\n명부 연봉을 확정 전 금액(${formatWon(record.baseSalary)})으로 되돌리고 레벨도 ${record.fromLevel} 로 복구합니다.`,
+        `${record.name}의 ${record.year}년 확정을 취소할까요?${
+          record.toLevel !== record.fromLevel ? `\n레벨도 ${record.fromLevel} 로 되돌립니다.` : ''
+        }`,
       )
     )
       return
     setDecisions((prev) => prev.filter((d) => d.id !== record.id))
-    setEmployees((prev) =>
-      prev.map((e) =>
-        e.id === record.employeeId
-          ? { ...e, currentSalary: record.baseSalary, levelId: record.fromLevel }
-          : e,
-      ),
-    )
-    showToast('확정을 취소하고 명부를 되돌렸습니다.')
+    if (record.toLevel !== record.fromLevel)
+      setEmployees((prev) =>
+        prev.map((e) => (e.id === record.employeeId ? { ...e, levelId: record.fromLevel } : e)),
+      )
+    showToast('확정을 취소했습니다.')
   }
 
   /* ---------- 직원 명부 ---------- */
@@ -378,7 +499,7 @@ export default function App() {
     const count = evaluations.filter((r) => r.employeeId === target.id).length
     if (
       !window.confirm(
-        `${target.name}을(를) 명부에서 삭제할까요?${count ? ` 저장된 평가 ${count}건과 보상 확정 기록도 함께 삭제됩니다.` : ''}`,
+        `${target.name}을(를) 명부에서 삭제할까요?${count ? ` 저장된 평가 ${count}건과 확정 기록도 함께 삭제됩니다.` : ''}`,
       )
     )
       return
@@ -391,9 +512,6 @@ export default function App() {
     setDialog({ open: false, employee: null })
     showToast(`${target.name}을(를) 삭제했습니다.`)
   }
-
-  const updateSalary = (currentSalary) =>
-    setEmployees((prev) => prev.map((e) => (e.id === employee.id ? { ...e, currentSalary } : e)))
 
   const updateLevel = (levelId) =>
     setEmployees((prev) => prev.map((e) => (e.id === employee.id ? { ...e, levelId } : e)))
@@ -419,15 +537,16 @@ export default function App() {
   const yearDecisions = decisions.filter((d) => d.year === year)
   const history = employee ? evaluations.filter((r) => r.employeeId === employee.id) : []
   const dirty = Boolean(draft)
+  const nameOf = (id) => employees.find((e) => e.id === id)?.name ?? '(삭제됨)'
 
-  const calibrationTotals = yearDecisions.reduce(
-    (acc, d) => {
-      acc.base += d.baseSalary
-      acc.raise += d.newSalary - d.baseSalary
-      return acc
-    },
-    { base: 0, raise: 0 },
-  )
+  const allAnnual = useMemo(() => {
+    const merged = { adjustments: [], borderline: [] }
+    for (const res of Object.values(annualCohort.byCohort)) {
+      merged.adjustments.push(...res.adjustments)
+      merged.borderline.push(...borderlinePairs(res.sorted, res.byId))
+    }
+    return merged
+  }, [annualCohort])
 
   const signal = employee
     ? promotionSignal(
@@ -447,10 +566,11 @@ export default function App() {
           </span>
           <div className="mr-auto">
             <h1 className="text-lg font-semibold tracking-tight text-slate-900">
-              IT 직군 평가 · 보상 산정
+              IT 직군 평가 · 등급 산정
             </h1>
             <p className="text-xs text-slate-500">
-              레벨별 기대치로 분기마다 평가하고, 등급 × 시장 대비 위치로 연 1회 보상을 확정합니다
+              레벨별 기대치로 분기마다 평가하고, 상대평가로 연간 등급과 권장 인상률을 냅니다 ·
+              연봉 금액은 다루지 않습니다
             </p>
           </div>
 
@@ -466,7 +586,7 @@ export default function App() {
           </label>
 
           <Button icon={SlidersHorizontal} onClick={() => setPolicyOpen(true)}>
-            보상 정책 · 재원 {budget}%
+            {relative ? '상대평가' : '절대평가'} · 재원 {budget}%
           </Button>
         </div>
 
@@ -548,7 +668,9 @@ export default function App() {
                         >
                           {role.label}
                         </span>
-                        <span className={`rounded-lg px-2 py-0.5 text-[11px] font-medium ${level.theme.chip}`}>
+                        <span
+                          className={`rounded-lg px-2 py-0.5 text-[11px] font-medium ${level.theme.chip}`}
+                        >
                           {level.short} {level.label}
                         </span>
                         {savedEvaluation ? (
@@ -562,8 +684,9 @@ export default function App() {
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        {quarterLabel(quarter)} 평가 · 이 화면에서는 연봉을 다루지 않습니다
+                      <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                        {quarterLabel(quarter)} 평가
+                        <DeltaBadge delta={quarterDeltaOf(employee.id)} size="sm" />
                       </p>
                     </div>
 
@@ -587,7 +710,12 @@ export default function App() {
                       title={`${role.label} · ${level.label} 평가 항목`}
                       description={`${groups.reduce((a, g) => a + g.criteria.length, 0)}개 항목 · 도메인별 가중치로 합산됩니다. "3점"의 기준은 레벨마다 다릅니다.`}
                       right={
-                        <Button icon={RotateCcw} variant="ghost" onClick={resetScores} className="no-print">
+                        <Button
+                          icon={RotateCcw}
+                          variant="ghost"
+                          onClick={resetScores}
+                          className="no-print"
+                        >
                           초기화
                         </Button>
                       }
@@ -623,6 +751,11 @@ export default function App() {
                       grade={grade}
                       byDomain={scored.byDomain}
                       level={level}
+                      rank={myRank}
+                      cohortSize={cohortSize}
+                      budget={budget}
+                      delta={quarterDeltaOf(employee.id)}
+                      relative={relative}
                     />
                     <LevelPanel level={level} onChange={updateLevel} />
                     <EvaluationHistory
@@ -634,24 +767,26 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              /* ─────────── 연간 보상 확정 ─────────── */
+              /* ─────────── 연간 등급 확정 ─────────── */
               <div className="space-y-5">
                 {annual.count ? (
-                  <CompensationPanel
+                  <DecisionPanel
                     year={year}
                     employee={employee}
-                    baseSalary={decisionBase}
-                    decided={Boolean(savedDecision)}
                     level={LEVEL_MAP[decisionFromLevel] ?? level}
                     proposedLevelId={proposedLevelId}
-                    band={meritBand}
-                    targetBand={targetBand}
                     annual={annual}
+                    gradeKey={annualGradeKey}
+                    rank={annualRankOf(employee.id)}
+                    cohortSize={
+                      annualCohort.byCohort[cohortKeyOf(employee)]?.sorted.length ?? 0
+                    }
                     budget={budget}
                     finalRate={finalRate}
                     rateIsAuto={rateIsAuto}
                     issues={issues}
-                    onSalaryChange={updateSalary}
+                    delta={annualDeltaOf(employee.id)}
+                    decided={Boolean(savedDecision)}
                     onProposedLevel={(id) => patchDecision({ toLevel: id, finalRate: null })}
                     onRateChange={(v) => patchDecision({ finalRate: Number.isFinite(v) ? v : 0 })}
                     onApplyRecommended={() => patchDecision({ finalRate: null })}
@@ -665,7 +800,7 @@ export default function App() {
                       {year}년에 저장된 분기 평가가 없습니다
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      보상은 그 해의 분기 평가 기록으로만 산정합니다. 먼저 [분기 평가]에서
+                      연간 등급은 그 해 분기 평가 기록으로만 산정합니다. 먼저 [분기 평가]에서
                       기록을 남겨 주세요.
                     </p>
                     <Button onClick={() => setMode('quarter')} className="mx-auto mt-4">
@@ -679,7 +814,7 @@ export default function App() {
                     <Card>
                       <CardHeader
                         title="연간 산정 근거"
-                        description={`${year}년 분기 평가 ${annual.count}건의 평균으로 연간 등급을 냅니다. 미평가 분기는 채워 넣지 않습니다.`}
+                        description={`${year}년 분기 평가 ${annual.count}건의 평균으로 연간 점수를 냅니다. 미평가 분기는 채워 넣지 않습니다.`}
                       />
                       <ul className="divide-y divide-slate-100">
                         {annual.quarters.map((q) => (
@@ -696,9 +831,6 @@ export default function App() {
                             <span className="w-10 text-right text-xs font-semibold tabular-nums text-slate-700">
                               {Number(q.score).toFixed(2)}
                             </span>
-                            <span className="w-5 text-right text-xs font-bold text-slate-500">
-                              {q.grade}
-                            </span>
                           </li>
                         ))}
                       </ul>
@@ -706,14 +838,14 @@ export default function App() {
                         <Field
                           label="확정 사유 메모"
                           htmlFor="decision-memo"
-                          hint="추천값과 다르게 확정했거나 C·D 등급이면 필수입니다."
+                          hint="추천 인상률과 다르게 확정했거나 C·D 등급이면 필수입니다."
                         >
                           <textarea
                             id="decision-memo"
                             rows={2}
                             value={decisionMemo}
                             onChange={(e) => patchDecision({ memo: e.target.value })}
-                            placeholder="예) 밴드 하단이라 추천보다 1%p 상향. 다음 사이클에 L4 승급 심사 예정."
+                            placeholder="예) 하반기 신규 도메인 이관을 단독으로 완료. 다음 사이클에 L4 승급 심사 예정."
                             className={`${inputClass} resize-y`}
                           />
                         </Field>
@@ -740,10 +872,14 @@ export default function App() {
 
                 <CalibrationPanel
                   records={yearDecisions}
+                  distribution={distribution}
                   budget={budget}
-                  totalBase={calibrationTotals.base}
-                  totalRaise={calibrationTotals.raise}
-                  scopeLabel={`${year}년 확정 기준`}
+                  avgRate={averageRate(yearDecisions)}
+                  adjustments={allAnnual.adjustments}
+                  borderline={allAnnual.borderline}
+                  nameOf={nameOf}
+                  scopeLabel={`${year}년 · ${relative ? `상대평가(${relativeScope === 'all' ? '전체' : relativeScope === 'role' ? '직무별' : '레벨별'})` : '절대평가'}`}
+                  onSelect={setSelectedId}
                 />
               </div>
             )
@@ -774,6 +910,8 @@ export default function App() {
               quarter={quarter}
               employees={roster}
               evaluationOf={(id) => evaluationOf(id)}
+              deltaOfEmployee={quarterDeltaOf}
+              gradeOfEmployee={quarterGradeOf}
               onSelect={setSelectedId}
               onDeleteEvaluation={deleteEvaluation}
               actions={
@@ -797,7 +935,11 @@ export default function App() {
               employees={roster}
               evaluationsOfYear={(id) => evaluationsOfYear(id)}
               decisionOf={(id) => decisionOf(id)}
-              bandOverrides={bandOverrides}
+              gradeOfEmployee={annualGradeOf}
+              rankOfEmployee={annualRankOf}
+              deltaOfEmployee={annualDeltaOf}
+              cohortSize={annualCohort.entries.length}
+              budget={budget}
               onSelect={setSelectedId}
               onDeleteDecision={deleteDecision}
               actions={
@@ -840,7 +982,7 @@ export default function App() {
         onSave={(next) => {
           setSettings((prev) => ({ ...prev, ...next }))
           setPolicyOpen(false)
-          showToast('보상 정책을 저장했습니다.')
+          showToast('평가 정책을 저장했습니다.')
         }}
       />
 
@@ -864,7 +1006,7 @@ export default function App() {
   )
 }
 
-/** 연도 이동 — 보상 확정은 연 1회이므로 분기 대신 연도로 다닌다 */
+/** 연도 이동 — 등급 확정은 연 1회이므로 분기 대신 연도로 다닌다 */
 function YearSwitcher({ year, onChange, decidedCount, totalCount }) {
   return (
     <div className="flex items-center gap-1 rounded-xl border border-slate-200 px-1 py-1">
@@ -877,7 +1019,7 @@ function YearSwitcher({ year, onChange, decidedCount, totalCount }) {
         <ChevronLeft size={16} strokeWidth={2} />
       </button>
       <div className="px-2 text-center">
-        <div className="text-sm font-semibold tabular-nums text-slate-900">{year}년 보상</div>
+        <div className="text-sm font-semibold tabular-nums text-slate-900">{year}년 등급</div>
         <div className="text-[10px] text-slate-400">
           확정 {decidedCount}/{totalCount}명
         </div>

@@ -1,42 +1,37 @@
-import { Landmark, Trash2 } from 'lucide-react'
+import { Award, Trash2 } from 'lucide-react'
 import { Card, CardHeader } from './ui.jsx'
 import { ROLE_MAP } from '../data/roles.js'
 import { LEVEL_MAP } from '../data/levels.js'
-import { GRADE_MAP, annualRollup, calcSalary, compaRatio } from '../lib/grading.js'
-import { bandFor } from '../data/market.js'
-import { formatNumber } from '../lib/format.js'
+import { GRADE_MAP, annualRollup, averageRate } from '../lib/grading.js'
+import DeltaBadge, { GradeMove } from './DeltaBadge.jsx'
 
-/** 연간 보상 확정 현황 — 확정 전(추천)과 확정 후를 한 표에서 본다 */
+/** 연간 등급 확정 현황 — 금액 없이 등급·순위·인상률(%)·직전 대비까지만 */
 export default function AnnualTable({
   year,
   employees,
   evaluationsOfYear,
   decisionOf,
-  bandOverrides,
+  gradeOfEmployee,
+  rankOfEmployee,
+  deltaOfEmployee,
+  cohortSize,
+  budget,
   onSelect,
   onDeleteDecision,
   actions,
 }) {
   const decided = employees.map((e) => decisionOf(e.id)).filter(Boolean)
-  const totals = decided.reduce(
-    (acc, d) => {
-      acc.base += d.baseSalary
-      acc.raise += d.newSalary - d.baseSalary
-      acc.next += d.newSalary
-      return acc
-    },
-    { base: 0, raise: 0, next: 0 },
-  )
-  const totalRate = totals.base ? (totals.raise / totals.base) * 100 : 0
+  const avg = averageRate(decided)
+  const over = avg - budget
 
   return (
     <Card>
       <CardHeader
-        icon={Landmark}
-        title={`${year}년 보상 확정 현황`}
+        icon={Award}
+        title={`${year}년 등급 확정 현황`}
         description={
           employees.length
-            ? `${decided.length}/${employees.length}명 확정 · 인상 재원 ${formatNumber(totals.raise)}원 (가중 평균 ${totalRate.toFixed(2)}%)`
+            ? `${decided.length}/${employees.length}명 확정 · 평균 인상률 ${avg.toFixed(2)}% (재원 ${budget}%${over > 0.3 ? ` · ${over.toFixed(2)}%p 초과` : ''})`
             : '등록된 직원이 없습니다.'
         }
         right={actions}
@@ -44,19 +39,20 @@ export default function AnnualTable({
 
       {employees.length ? (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1000px] text-sm">
+          <table className="w-full min-w-[980px] text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-left text-[11px] font-medium text-slate-500">
                 <th className="px-5 py-2.5">이름</th>
                 <th className="px-3 py-2.5">직무 · 레벨</th>
                 <th className="px-3 py-2.5 text-center">평가 분기</th>
                 <th className="px-3 py-2.5 text-right">연간 점수</th>
+                <th className="px-3 py-2.5 text-left">직전 대비</th>
+                <th className="px-3 py-2.5 text-center">순위</th>
                 <th className="px-3 py-2.5 text-center">등급</th>
-                <th className="px-3 py-2.5 text-right">compa</th>
+                <th className="px-3 py-2.5 text-center">등급 변화</th>
                 <th className="px-3 py-2.5 text-right">성과</th>
                 <th className="px-3 py-2.5 text-right">승급</th>
                 <th className="px-3 py-2.5 text-right">확정 인상률</th>
-                <th className="px-3 py-2.5 text-right">조정 후 연봉</th>
                 <th className="px-5 py-2.5 text-right no-print">관리</th>
               </tr>
             </thead>
@@ -66,16 +62,10 @@ export default function AnnualTable({
                 const level = LEVEL_MAP[employee.levelId] ?? LEVEL_MAP.L2
                 const decision = decisionOf(employee.id)
                 const annual = annualRollup(evaluationsOfYear(employee.id))
-                const grade = decision
-                  ? GRADE_MAP[decision.grade]
-                  : (annual.grade ?? null)
-                const band =
-                  decision?.band ?? bandFor(employee.roleId, employee.levelId, bandOverrides)
-                const compa = compaRatio(
-                  decision ? decision.baseSalary : employee.currentSalary,
-                  band,
-                )
-                const s = decision ? calcSalary(decision.baseSalary, decision.finalRate) : null
+                const gradeKey = decision?.grade ?? gradeOfEmployee(employee.id)
+                const grade = GRADE_MAP[gradeKey] ?? null
+                const rank = rankOfEmployee(employee.id)
+                const delta = deltaOfEmployee(employee.id)
 
                 return (
                   <tr
@@ -111,13 +101,31 @@ export default function AnnualTable({
                         {annual.count}/4
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-right tabular-nums">
+                    <td className="px-3 py-3 text-right font-medium tabular-nums">
                       {annual.score != null ? annual.score.toFixed(2) : '—'}
+                    </td>
+                    <td className="px-3 py-3">
+                      {annual.count ? (
+                        <DeltaBadge delta={delta} size="sm" />
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-center tabular-nums">
+                      {rank ? (
+                        <span className="text-slate-500">
+                          {rank}
+                          <span className="text-[10px] text-slate-400">/{cohortSize}</span>
+                        </span>
+                      ) : (
+                        '—'
+                      )}
                     </td>
                     <td className="px-3 py-3 text-center">
                       {grade ? (
                         <span
-                          className={`inline-grid size-6 place-items-center rounded-lg text-xs font-bold ${grade.badge}`}
+                          className={`inline-grid size-6 place-items-center rounded-lg text-xs font-bold ${grade.badge} ${decision ? '' : 'opacity-50'}`}
+                          title={decision ? '확정' : '잠정'}
                         >
                           {grade.key}
                         </span>
@@ -125,18 +133,27 @@ export default function AnnualTable({
                         '—'
                       )}
                     </td>
-                    <td className="px-3 py-3 text-right tabular-nums">
-                      {compa != null ? `${(compa * 100).toFixed(0)}%` : '—'}
+                    <td className="px-3 py-3 text-center">
+                      <GradeMove delta={delta} />
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums">
                       {decision ? `${decision.merit.toFixed(1)}%` : '—'}
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums">
-                      {decision ? (decision.promotion ? `+${decision.promotion.toFixed(1)}%` : '—') : '—'}
+                      {decision
+                        ? decision.promotion
+                          ? `+${decision.promotion.toFixed(1)}%`
+                          : '—'
+                        : '—'}
                     </td>
                     <td className="px-3 py-3 text-right font-semibold tabular-nums text-slate-900">
                       {decision ? (
-                        `${decision.finalRate.toFixed(1)}%`
+                        <span className="inline-flex items-center gap-1.5">
+                          {decision.finalRate.toFixed(1)}%
+                          {delta?.rateDelta != null ? (
+                            <DeltaBadge delta={delta} show="rate" size="sm" />
+                          ) : null}
+                        </span>
                       ) : (
                         <button
                           type="button"
@@ -145,18 +162,6 @@ export default function AnnualTable({
                         >
                           확정하기
                         </button>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums">
-                      {decision ? (
-                        <span>
-                          {formatNumber(s.newSalary)}
-                          <span className="ml-1 text-[11px] text-emerald-600">
-                            +{formatNumber(s.raiseAmount)}
-                          </span>
-                        </span>
-                      ) : (
-                        '—'
                       )}
                     </td>
                     <td className="px-5 py-3 text-right no-print">
@@ -177,15 +182,13 @@ export default function AnnualTable({
             </tbody>
             <tfoot>
               <tr className="border-t border-slate-100 bg-slate-50/60 text-slate-900">
-                <td className="px-5 py-3 text-xs font-semibold" colSpan={8}>
-                  합계 (확정 {decided.length}명)
+                <td className="px-5 py-3 text-xs font-semibold" colSpan={10}>
+                  확정 {decided.length}명 · 평균 인상률
                 </td>
-                <td className="px-3 py-3 text-right text-xs font-semibold tabular-nums">
-                  {totalRate.toFixed(2)}%
-                </td>
-                <td className="px-3 py-3 text-right text-xs font-semibold tabular-nums">
-                  {formatNumber(totals.next)}
-                  <span className="ml-1 text-emerald-600">+{formatNumber(totals.raise)}</span>
+                <td
+                  className={`px-3 py-3 text-right text-xs font-semibold tabular-nums ${over > 0.3 ? 'text-amber-600' : ''}`}
+                >
+                  {avg.toFixed(2)}%
                 </td>
                 <td className="px-5 py-3 no-print" />
               </tr>

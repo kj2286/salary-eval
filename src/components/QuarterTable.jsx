@@ -3,6 +3,7 @@ import { Card, CardHeader } from './ui.jsx'
 import { ROLE_MAP, DOMAINS } from '../data/roles.js'
 import { LEVEL_MAP } from '../data/levels.js'
 import { GRADE_MAP } from '../lib/grading.js'
+import DeltaBadge from './DeltaBadge.jsx'
 import { quarterLabel } from '../lib/quarters.js'
 
 /**
@@ -16,6 +17,8 @@ export default function QuarterTable({
   quarter,
   employees,
   evaluationOf,
+  deltaOfEmployee,
+  gradeOfEmployee,
   onSelect,
   onDeleteEvaluation,
   actions,
@@ -29,7 +32,7 @@ export default function QuarterTable({
         title={`${quarterLabel(quarter)} 평가 현황`}
         description={
           employees.length
-            ? `${evaluated.length}/${employees.length}명 완료 · 미평가자도 행으로 남겨 누락을 드러냅니다.`
+            ? `${evaluated.length}/${employees.length}명 완료 · 등급은 상대평가 잠정값이며 연간 확정에서 최종 결정됩니다.`
             : '등록된 직원이 없습니다.'
         }
         right={actions}
@@ -43,7 +46,8 @@ export default function QuarterTable({
                 <th className="px-5 py-2.5">이름</th>
                 <th className="px-3 py-2.5">직무 · 레벨</th>
                 <th className="px-3 py-2.5 text-right">가중 점수</th>
-                <th className="px-3 py-2.5 text-center">등급</th>
+                <th className="px-3 py-2.5 text-left">직전 분기 대비</th>
+                <th className="px-3 py-2.5 text-center">잠정 등급</th>
                 {DOMAINS.map((d) => (
                   <th key={d.id} className="px-3 py-2.5 text-right">
                     {d.label}
@@ -57,7 +61,8 @@ export default function QuarterTable({
                 const role = ROLE_MAP[employee.roleId]
                 const level = LEVEL_MAP[employee.levelId] ?? LEVEL_MAP.L2
                 const record = evaluationOf(employee.id)
-                const grade = record ? GRADE_MAP[record.grade] : null
+                const grade = record ? (GRADE_MAP[gradeOfEmployee(employee.id)] ?? GRADE_MAP[record.grade]) : null
+                const delta = record ? deltaOfEmployee(employee.id) : null
 
                 return (
                   <tr
@@ -90,6 +95,9 @@ export default function QuarterTable({
                     </td>
                     <td className="px-3 py-3 text-right font-medium tabular-nums">
                       {record ? Number(record.score).toFixed(2) : '—'}
+                    </td>
+                    <td className="px-3 py-3">
+                      {record ? <DeltaBadge delta={delta} size="sm" /> : <span className="text-slate-300">—</span>}
                     </td>
                     <td className="px-3 py-3 text-center">
                       {grade ? (

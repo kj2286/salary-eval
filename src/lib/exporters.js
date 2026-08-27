@@ -1,17 +1,18 @@
 import { CORE_CRITERIA, ROLE_MAP } from '../data/roles.js'
 import { LEVEL_MAP } from '../data/levels.js'
-import { GRADE_MAP, calcSalary, compaRatio } from './grading.js'
-import { bandFor } from '../data/market.js'
+import { GRADE_MAP } from './grading.js'
 import { quarterLabel } from './quarters.js'
 
 /**
  * 레코드 1건 → "평평한 한 줄". CSV / TSV / 웹훅이 모두 이 형태를 공유한다.
- * 분기 평가와 연간 보상 확정은 성격이 다르므로 행 모양도 다르다 (year 필드로 구분).
+ *
+ * ⚠️ 연봉 금액은 어떤 행에도 들어가지 않는다. 이 앱은 금액을 저장하지 않으며,
+ * 내보낸 파일이 그대로 공유돼도 개인 연봉이 새지 않아야 한다.
  */
 export const toRow = (record) =>
   record?.year != null ? toDecisionRow(record) : toEvaluationRow(record)
 
-/** 분기 평가 — 보상 정보는 들어가지 않는다 */
+/** 분기 평가 */
 export function toEvaluationRow(record) {
   const role = ROLE_MAP[record.roleId]
   const level = LEVEL_MAP[record.levelId] ?? LEVEL_MAP.L2
@@ -27,13 +28,11 @@ export function toEvaluationRow(record) {
     레벨: `${level.short} ${level.label}`,
   }
 
-  // 도메인 점수 + 그 레벨에서의 가중치
   for (const [domainId, d] of Object.entries(record.byDomain ?? {})) {
     row[`${domainId}_점수`] = d.avg
     row[`${domainId}_가중치`] = `${d.weight}%`
   }
 
-  // 항목별 원점수 — 직무 문항 + 공통 문항
   const criteria = [...(role?.criteria ?? []), ...CORE_CRITERIA]
   criteria.forEach((c) => {
     if (record.scores?.[c.id] != null) row[`항목_${c.label}`] = record.scores[c.id]
@@ -41,19 +40,17 @@ export function toEvaluationRow(record) {
 
   Object.assign(row, {
     가중점수: Number(record.score ?? 0).toFixed(2),
-    등급: grade.key,
+    잠정등급: grade.key,
     메모: record.memo ?? '',
   })
   return row
 }
 
-/** 연간 보상 확정 */
+/** 연간 등급 확정 */
 export function toDecisionRow(record) {
   const role = ROLE_MAP[record.roleId]
   const from = LEVEL_MAP[record.fromLevel] ?? LEVEL_MAP.L2
   const to = LEVEL_MAP[record.toLevel] ?? from
-  const salary = calcSalary(record.baseSalary, record.finalRate)
-  const band = record.band ?? bandFor(record.roleId, record.toLevel)
 
   return {
     구분: '연간확정',
@@ -66,16 +63,16 @@ export function toDecisionRow(record) {
     평가분기수: record.quarterCount,
     연간점수: Number(record.annualScore ?? 0).toFixed(2),
     등급: record.grade,
-    '밴드중위값': band?.mid ?? '',
-    'compa-ratio(전)': `${((compaRatio(record.baseSalary, band) ?? 0) * 100).toFixed(0)}%`,
-    'compa-ratio(후)': `${((compaRatio(salary.newSalary, band) ?? 0) * 100).toFixed(0)}%`,
+    순위: record.rank ? `${record.rank}/${record.cohortSize}` : '',
+    '직전대비_점수': record.delta ? Number(record.delta.scoreDelta).toFixed(2) : '',
+    '직전대비_점수%': record.delta?.scorePct != null ? `${record.delta.scorePct}%` : '',
+    '직전대비_등급': record.delta?.fromGrade
+      ? `${record.delta.fromGrade} → ${record.delta.toGrade}`
+      : '',
+    '직전대비_인상률%p': record.delta?.rateDelta != null ? `${record.delta.rateDelta}%p` : '',
     '성과인상률': `${Number(record.merit).toFixed(1)}%`,
     '승급인상률': `${Number(record.promotion).toFixed(1)}%`,
     확정인상률: `${Number(record.finalRate).toFixed(1)}%`,
-    현재연봉: salary.base,
-    인상금액: salary.raiseAmount,
-    조정후연봉: salary.newSalary,
-    '월지급액(세전)': salary.monthlyGross,
     메모: record.memo ?? '',
   }
 }
@@ -121,7 +118,7 @@ export function toJson({ employees, evaluations, decisions, settings }) {
     {
       exportedAt: new Date().toISOString(),
       app: 'mathsecretary-salary-eval',
-      version: 3,
+      version: 4,
       employees,
       evaluations,
       decisions: decisions ?? [],
