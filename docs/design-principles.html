@@ -4,33 +4,27 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@600;700&display=swap">
 
 <style>
-  /* ── 토큰 ───────────────────────────────────────────────
-     등급을 무지개가 아니라 한 축 위의 눈금으로 다룬다.
-     S(딥 틸) → B(중립) → D(머드 클레이) 발산형 램프. */
+  /* ── 토큰 ──────────────────────────────────────────
+     등급은 무지개가 아니라 한 축 위의 눈금.
+     S(딥 틸) → B(중립) → D(머드 클레이) 발산형. */
   :root {
     color-scheme: light;
-
     --paper:   #f4f6f6;
     --surface: #ffffff;
-    --ink:     #1b232a;
-    --ink-2:   #4d5a63;
-    --ink-3:   #7d8b94;
-    --rule:    #dde3e4;
+    --ink:     #18212a;
+    --ink-2:   #566571;
+    --ink-3:   #8b98a1;
+    --rule:    #dde3e5;
     --rule-2:  #eaeeef;
     --accent:  #2c565e;
-    --accent-soft: #e4edee;
-
+    --accent-soft: #e2ecee;
     --g-s: #22474f;
     --g-a: #3f757c;
     --g-b: #6f8087;
     --g-c: #a3765d;
     --g-d: #8a4d40;
-
-    --warn-bg: #fbf2ec;
-    --warn-ink: #7d4a34;
-
-    --shadow: 0 1px 2px rgb(27 35 42 / .05), 0 8px 24px -16px rgb(27 35 42 / .3);
-
+    --stop-bg: #fbf1ec;
+    --stop-ink: #7d4433;
     --f-display: 'Noto Serif KR', 'Apple SD Gothic Neo', serif;
     --f-body: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', system-ui, sans-serif;
     --f-mono: 'IBM Plex Mono', 'SFMono-Regular', ui-monospace, monospace;
@@ -39,254 +33,163 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
-      --paper:   #12171a;
+      --paper:   #11161a;
       --surface: #1a2126;
-      --ink:     #e7ecee;
-      --ink-2:   #a9b6bd;
-      --ink-3:   #75848c;
-      --rule:    #2c363c;
-      --rule-2:  #232c31;
-      --accent:  #85b6bc;
-      --accent-soft: #1f3034;
-
-      --g-s: #8fc3c9;
+      --ink:     #e8edef;
+      --ink-2:   #aab7be;
+      --ink-3:   #78868e;
+      --rule:    #2d373d;
+      --rule-2:  #222b30;
+      --accent:  #8ebbc1;
+      --accent-soft: #1e2f33;
+      --g-s: #93c6cc;
       --g-a: #6fa3aa;
       --g-b: #8c9aa1;
       --g-c: #c89a7d;
       --g-d: #c07463;
-
-      --warn-bg: #2a211c;
-      --warn-ink: #d9a986;
-
-      --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px -16px rgb(0 0 0 / .8);
+      --stop-bg: #2a201b;
+      --stop-ink: #dba98a;
     }
   }
 
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --paper:   #12171a;
+    --paper:   #11161a;
     --surface: #1a2126;
-    --ink:     #e7ecee;
-    --ink-2:   #a9b6bd;
-    --ink-3:   #75848c;
-    --rule:    #2c363c;
-    --rule-2:  #232c31;
-    --accent:  #85b6bc;
-    --accent-soft: #1f3034;
-
-    --g-s: #8fc3c9;
+    --ink:     #e8edef;
+    --ink-2:   #aab7be;
+    --ink-3:   #78868e;
+    --rule:    #2d373d;
+    --rule-2:  #222b30;
+    --accent:  #8ebbc1;
+    --accent-soft: #1e2f33;
+    --g-s: #93c6cc;
     --g-a: #6fa3aa;
     --g-b: #8c9aa1;
     --g-c: #c89a7d;
     --g-d: #c07463;
-
-    --warn-bg: #2a211c;
-    --warn-ink: #d9a986;
-
-    --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px -16px rgb(0 0 0 / .8);
+    --stop-bg: #2a201b;
+    --stop-ink: #dba98a;
   }
 
   * { box-sizing: border-box; }
 
   body {
     margin: 0;
-    /* 한글은 기본 규칙으로 단어 중간에서 끊긴다 ("조직은" → "조직" + "은") */
+    /* 한글은 기본 규칙이면 단어 중간에서 끊긴다 */
     word-break: keep-all;
     overflow-wrap: break-word;
     background: var(--paper);
     color: var(--ink);
     font-family: var(--f-body);
-    font-size: 16px;
-    line-height: 1.65;
+    font-size: 17px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
 
-  /* ── 진행선 ── */
-  .progress {
-    position: fixed; inset: 0 0 auto 0; z-index: 20;
-    height: 2px; background: var(--rule-2);
-  }
-  .progress span {
-    display: block; height: 100%; width: 0;
-    background: var(--accent);
-    transition: width .25s ease;
-  }
+  .progress { position: fixed; inset: 0 0 auto 0; z-index: 20; height: 2px; background: var(--rule-2); }
+  .progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s ease; }
 
-  /* ── 덱 ── */
-  .deck {
-    height: 100dvh;
-    overflow-y: auto;
-    scroll-snap-type: y mandatory;
-    scroll-behavior: smooth;
-  }
-  .deck[data-mode="doc"] {
-    scroll-snap-type: none;
-  }
+  .deck { height: 100dvh; overflow-y: auto; scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+  .deck[data-mode="doc"] { scroll-snap-type: none; }
 
   .slide {
     scroll-snap-align: start;
     min-height: 100dvh;
-    display: grid;
-    place-items: center;
+    display: grid; place-items: center;
     padding: 72px 24px 104px;
   }
   .deck[data-mode="doc"] .slide {
-    min-height: 0;
-    padding: 56px 24px;
+    min-height: 0; padding: 64px 24px;
     border-bottom: 1px solid var(--rule-2);
   }
   .deck[data-mode="doc"] .slide:last-of-type { border-bottom: 0; }
 
-  .sheet {
-    width: min(920px, 100%);
-    display: flex;
-    flex-direction: column;
-    gap: 28px;
-  }
+  .sheet { width: min(860px, 100%); display: flex; flex-direction: column; gap: 32px; }
 
-  /* ── 슬라이드 머리 ── */
+  /* ── 머리 ── */
   .eyebrow {
-    display: flex; align-items: baseline; gap: 10px;
+    display: flex; align-items: center; gap: 12px;
     font-family: var(--f-mono);
-    font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
-    color: var(--ink-3);
+    font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent);
   }
-  .eyebrow b {
-    font-weight: 500; color: var(--accent);
-  }
-  .eyebrow::after {
-    content: ""; flex: 1; height: 1px; background: var(--rule);
-  }
+  .eyebrow::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
 
   h1 {
-    font-family: var(--f-display);
-    font-weight: 700;
-    font-size: clamp(34px, 6vw, 58px);
-    line-height: 1.24;
-    letter-spacing: -.02em;
-    margin: 0;
-    text-wrap: balance;
+    font-family: var(--f-display); font-weight: 700;
+    font-size: clamp(36px, 6.4vw, 62px);
+    line-height: 1.2; letter-spacing: -.025em;
+    margin: 0; text-wrap: balance;
   }
+  /* 슬라이드의 주장 자체가 제목이다. 설명은 그 아래 한 줄로 끝낸다. */
   h2 {
-    font-family: var(--f-display);
-    font-weight: 600;
-    font-size: clamp(26px, 3.6vw, 38px);
-    line-height: 1.32;
-    letter-spacing: -.015em;
-    margin: 10px 0 0;
-    text-wrap: balance;
+    font-family: var(--f-display); font-weight: 600;
+    font-size: clamp(28px, 4.2vw, 44px);
+    line-height: 1.28; letter-spacing: -.02em;
+    margin: 12px 0 0; text-wrap: balance;
   }
-  .lede {
-    margin: 12px 0 0;
-    text-wrap: pretty;
-    max-width: 62ch;
-    font-size: clamp(15px, 1.6vw, 18px);
-    color: var(--ink-2);
+  .sub {
+    margin: 0; max-width: 46ch;
+    font-size: clamp(16px, 1.7vw, 18px);
+    color: var(--ink-2); text-wrap: pretty;
   }
-
+  .foot {
+    margin: 0; font-size: 14.5px; color: var(--ink-3); text-wrap: pretty;
+  }
+  strong { font-weight: 600; color: var(--ink); }
   p { margin: 0; }
 
-  /* ── 본문 구성 요소 ── */
-  .cols { display: grid; gap: 18px; }
-  @media (min-width: 760px) {
-    .cols-2 { grid-template-columns: 1fr 1fr; }
-    .cols-3 { grid-template-columns: repeat(3, 1fr); }
+  /* ── 강조 한 줄 ── */
+  .point {
+    display: flex; gap: 16px; align-items: flex-start;
+    font-size: clamp(18px, 2.1vw, 23px);
+    line-height: 1.5; letter-spacing: -.015em;
+    font-weight: 500;
+  }
+  .point::before {
+    content: ""; flex: none;
+    width: 3px; align-self: stretch; min-height: 1.4em;
+    background: var(--accent); border-radius: 2px;
   }
 
-  .block {
-    background: var(--surface);
-    border: 1px solid var(--rule);
-    border-radius: 4px;
-    padding: 20px 22px;
-    display: flex; flex-direction: column; gap: 8px;
+  /* ── 흐름도 ── */
+  .flow { display: grid; gap: 10px; }
+  @media (min-width: 720px) { .flow { grid-template-columns: repeat(4, 1fr); } }
+  .step {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 16px 18px; display: flex; flex-direction: column; gap: 4px;
   }
-  .block h3 {
-    margin: 0;
-    font-family: var(--f-body);
-    font-size: 15px; font-weight: 600;
-    letter-spacing: -.01em;
-  }
-  .block p { font-size: 14.5px; color: var(--ink-2); text-wrap: pretty; }
-
-  /* 번호 목록 — 순서가 실제로 의미 있는 곳에만 쓴다 */
-  ol.steps {
-    counter-reset: s; list-style: none; margin: 0; padding: 0;
-    display: flex; flex-direction: column; gap: 2px;
-  }
-  ol.steps li {
-    counter-increment: s;
-    display: grid;
-    grid-template-columns: 30px 1fr;
-    gap: 14px;
-    padding: 16px 0;
-    border-top: 1px solid var(--rule);
-  }
-  ol.steps li::before {
-    content: counter(s);
-    font-family: var(--f-mono);
-    font-size: 13px; font-weight: 500;
-    color: var(--accent);
-    padding-top: 3px;
-  }
-  /* li 는 [번호 | 본문] 2열이고 자식은 셋(::before·strong·.desc)이다.
-     열을 지정하지 않으면 .desc 가 30px 번호 칸으로 흘러들어가 세로로 찌그러진다. */
-  ol.steps > li > strong,
-  ol.steps > li > .desc { grid-column: 2; }
-  ol.steps strong {
-    display: block; font-weight: 600; font-size: 16.5px;
-    letter-spacing: -.01em;
-  }
-  /* 설명 문단만 블록으로. 안에 들어가는 등급 칩까지 블록이 되면 줄이 깨진다. */
-  ol.steps > li > .desc { display: block; color: var(--ink-2); font-size: 14.5px; margin-top: 3px; }
-
-  ul.plain {
-    list-style: none; margin: 0; padding: 0;
-    display: flex; flex-direction: column;
-  }
-  ul.plain li {
-    padding: 13px 0;
-    border-top: 1px solid var(--rule);
-    display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline;
-    font-size: 15px;
-  }
-  ul.plain li:first-child { border-top: 0; padding-top: 0; }
-  ul.plain .tag {
-    font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em;
-    text-transform: uppercase;
-    color: var(--ink-3);
-    white-space: nowrap;
-    padding-top: 2px;
-  }
-  ul.plain .tag.stop { color: var(--g-d); }
-  ul.plain .tag.warn { color: var(--g-c); }
-  ul.plain em { font-style: normal; color: var(--ink-2); }
+  .step b { font-family: var(--f-mono); font-size: 12px; font-weight: 500; color: var(--accent); }
+  .step span { font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
+  .step em { font-style: normal; font-size: 13.5px; color: var(--ink-3); }
+  .step.hr { background: none; border-style: dashed; }
+  .step.hr span, .step.hr b { color: var(--ink-3); }
 
   /* ── 표 ── */
   .scroll-x { overflow-x: auto; }
-  table {
-    width: 100%; min-width: 520px;
-    border-collapse: collapse;
-    font-size: 14.5px;
-    font-variant-numeric: tabular-nums;
-  }
-  th, td { padding: 11px 12px; text-align: left; }
+  table { width: 100%; min-width: 460px; border-collapse: collapse; font-size: 15.5px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 12px 12px; text-align: left; }
   thead th {
-    font-size: 11.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
-    color: var(--ink-3);
-    border-bottom: 1px solid var(--rule);
-    white-space: nowrap;
+    font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink-3); border-bottom: 1px solid var(--rule); white-space: nowrap;
   }
   tbody tr + tr td { border-top: 1px solid var(--rule-2); }
   td.num, th.num { text-align: right; font-family: var(--f-mono); }
+  td.big { font-family: var(--f-mono); font-size: 19px; font-weight: 500; text-align: right; }
   td.lvl { font-weight: 600; white-space: nowrap; }
   .muted { color: var(--ink-3); }
 
-  /* ── 등급 칩 ── */
   .grade {
     display: inline-grid; place-items: center;
-    width: 24px; height: 24px; border-radius: 3px;
-    font-family: var(--f-mono); font-size: 12px; font-weight: 500;
-    color: var(--surface);
+    width: 26px; height: 26px; border-radius: 3px;
+    font-family: var(--f-mono); font-size: 13px; font-weight: 500;
+    color: #fff;
+  }
+  :root[data-theme="dark"] .grade,
+  :root:not([data-theme="light"]) .grade { color: #11161a; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) .grade { color: #fff; }
   }
   .g-S { background: var(--g-s); }
   .g-A { background: var(--g-a); }
@@ -296,107 +199,84 @@
 
   /* ── 계산식 ── */
   .calc {
-    font-family: var(--f-mono);
-    font-size: 14px;
-    line-height: 2;
-    background: var(--surface);
-    border: 1px solid var(--rule);
-    border-radius: 4px;
-    padding: 20px 22px;
-    overflow-x: auto;
-    font-variant-numeric: tabular-nums;
+    font-family: var(--f-mono); font-size: 15px; line-height: 2.1;
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 20px 22px; overflow-x: auto; font-variant-numeric: tabular-nums;
   }
-  .calc .sum { border-top: 1px solid var(--rule); display: inline-block; padding-top: 4px; margin-top: 4px; }
   .calc .out { color: var(--accent); font-weight: 500; }
+  .calc .sum { border-top: 1px solid var(--rule); display: inline-block; padding-top: 6px; margin-top: 6px; }
+  .mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; color: var(--accent); }
 
-  .mono {
-    font-family: var(--f-mono);
-    font-variant-numeric: tabular-nums;
-    color: var(--accent);
-    font-size: 15px;
+  /* ── 목록 ── */
+  ul.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  ul.list li {
+    padding: 16px 0; border-top: 1px solid var(--rule);
+    display: grid; grid-template-columns: 26px 1fr; gap: 16px; align-items: baseline;
+  }
+  ul.list li:first-child { border-top: 0; padding-top: 0; }
+  ul.list .n { font-family: var(--f-mono); font-size: 13px; color: var(--accent); }
+  ul.list .t { font-size: 17.5px; font-weight: 600; letter-spacing: -.01em; }
+  ul.list .d { display: block; margin-top: 2px; font-size: 15px; font-weight: 400; color: var(--ink-2); }
+
+  ul.stops { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  ul.stops li {
+    background: var(--stop-bg); color: var(--stop-ink);
+    border-radius: 4px; padding: 14px 18px;
+    display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: baseline;
+    font-size: 16px;
+  }
+  ul.stops .x { font-family: var(--f-mono); font-size: 13px; }
+  ul.stops.warn li { background: none; color: var(--ink-2); border: 1px solid var(--rule); }
+
+  .two { display: grid; gap: 14px; }
+  @media (min-width: 720px) { .two { grid-template-columns: 1fr 1fr; } }
+  .card {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 18px 20px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .card b { font-size: 15.5px; letter-spacing: -.01em; }
+  .card p { font-size: 14.5px; color: var(--ink-2); text-wrap: pretty; }
+
+  .deltas { display: flex; flex-wrap: wrap; gap: 10px; }
+  .deltas span {
+    font-family: var(--f-mono); font-size: 15px;
+    background: var(--accent-soft); color: var(--accent);
+    border-radius: 3px; padding: 8px 14px;
   }
 
-  /* ── 인용/강조 한 줄 ── */
-  .keyline {
-    border-left: 2px solid var(--accent);
-    padding: 4px 0 4px 18px;
-    font-size: clamp(16px, 2vw, 19px);
-    line-height: 1.6;
-    letter-spacing: -.01em;
-  }
-
-  .note {
-    background: var(--warn-bg);
-    color: var(--warn-ink);
-    border-radius: 4px;
-    padding: 14px 18px;
-    font-size: 14px;
-  }
-
-  .anchors {
-    display: flex; flex-direction: column; gap: 0;
-  }
-  .anchors div {
-    display: grid; grid-template-columns: 56px 1fr; gap: 14px;
-    padding: 12px 0; border-top: 1px solid var(--rule);
-    font-size: 15px;
-  }
-  .anchors div:first-child { border-top: 0; padding-top: 0; }
-  .anchors b {
-    font-family: var(--f-mono); font-size: 12.5px; font-weight: 500;
-    color: var(--accent); padding-top: 3px;
-  }
-
-  /* ── 하단 이동 바 ── */
+  /* ── 하단 바 ── */
   .bar {
-    position: fixed; z-index: 20;
-    left: 0; right: 0; bottom: 0;
+    position: fixed; z-index: 20; left: 0; right: 0; bottom: 0;
     display: flex; align-items: center; gap: 10px;
     padding: 12px 20px;
     background: color-mix(in srgb, var(--paper) 88%, transparent);
     backdrop-filter: blur(8px);
     border-top: 1px solid var(--rule);
   }
-  .bar .count {
-    font-family: var(--f-mono); font-size: 12.5px; color: var(--ink-3);
-    font-variant-numeric: tabular-nums;
-    min-width: 52px;
-  }
-  .bar .title {
-    font-size: 12.5px; color: var(--ink-2);
-    margin-right: auto;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
+  .bar .count { font-family: var(--f-mono); font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; min-width: 48px; }
+  .bar .title { font-size: 12.5px; color: var(--ink-2); margin-right: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   button {
-    font: inherit; font-size: 13px;
-    color: var(--ink-2);
-    background: var(--surface);
-    border: 1px solid var(--rule);
-    border-radius: 3px;
-    padding: 6px 12px;
-    cursor: pointer;
+    font: inherit; font-size: 13px; color: var(--ink-2);
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 3px;
+    padding: 6px 12px; cursor: pointer;
   }
   button:hover { color: var(--ink); border-color: var(--ink-3); }
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
-  .bar .nav button { min-width: 38px; }
   .nav { display: flex; gap: 6px; }
-
-  @media (max-width: 620px) {
-    .bar .title { display: none; }
-  }
+  .nav button { min-width: 38px; }
+  @media (max-width: 620px) { .bar .title { display: none; } }
 
   @media (prefers-reduced-motion: reduce) {
     .deck { scroll-behavior: auto; }
     .progress span { transition: none; }
   }
 
-  /* ── 인쇄 ── */
   @media print {
     .bar, .progress { display: none; }
     .deck { height: auto; overflow: visible; scroll-snap-type: none; }
-    .slide { min-height: 0; padding: 0 0 28px; break-after: page; border: 0; }
-    .block, .calc, table { break-inside: avoid; }
+    .slide { min-height: 0; padding: 0 0 32px; break-after: page; border: 0; }
+    .card, .calc, table, ul.stops li { break-inside: avoid; }
   }
 </style>
 
@@ -407,456 +287,204 @@
   <!-- 1 ─ 표지 -->
   <section class="slide" data-title="표지">
     <div class="sheet">
-      <div class="eyebrow"><b>Post-Math</b> 2026-09</div>
-      <h1>IT 직군 평가 설계 원리</h1>
-      <p class="lede">
-        디자이너·프론트엔드·백엔드·AI 직군을 분기마다 평가하고, 연 1회 등급과 권장 인상률을
-        내는 체계입니다. 이 문서는 도구 사용법이 아니라 <strong>무엇을 왜 그렇게 재기로 했는가</strong>를
-        정리한 것입니다.
+      <div class="eyebrow">Post-Math · 2026</div>
+      <h1>IT 직군 평가<br>설계 원리</h1>
+      <p class="sub">
+        디자이너와 개발자를 분기마다 평가하고, 1년에 한 번 등급과 인상률을 정합니다.
       </p>
-      <div class="cols cols-3">
-        <div class="block">
-          <h3>대상</h3>
-          <p>리더가 팀원을 평가합니다. 연봉 금액은 다루지 않습니다.</p>
-        </div>
-        <div class="block">
-          <h3>산출물</h3>
-          <p>등급(S~D)과 권장 인상률(%)까지. 금액 확정은 HR 몫입니다.</p>
-        </div>
-        <div class="block">
-          <h3>읽는 법</h3>
-          <p>원리 7개를 훑고, 마지막 장의 결정 5가지에 답해 주세요.</p>
-        </div>
+      <p class="point">리더는 등급까지, 연봉 금액은 HR이 정합니다.</p>
+      <p class="foot">이 문서는 사용법이 아니라 기준입니다. 마지막 장에 정해주셔야 할 다섯 가지를 모아 뒀습니다.</p>
+    </div>
+  </section>
+
+  <!-- 2 ─ 전체 흐름 -->
+  <section class="slide" data-title="전체 흐름">
+    <div class="sheet">
+      <div class="eyebrow">한 장 요약</div>
+      <h2>순서는 네 단계입니다</h2>
+      <div class="flow">
+        <div class="step"><b>1</b><span>레벨을 정한다</span><em>L1 신입 ~ L5 리드</em></div>
+        <div class="step"><b>2</b><span>분기마다 채점</span><em>레벨별 기대치로</em></div>
+        <div class="step"><b>3</b><span>1년에 한 번 등급</span><em>S · A · B · C · D</em></div>
+        <div class="step hr"><b>HR</b><span>금액 확정</span><em>인상률(%)을 받아서</em></div>
       </div>
+      <p class="point">등급이 정해지면 인상률은 자동으로 따라옵니다.</p>
+      <p class="foot">리더가 판단하는 건 앞의 세 단계뿐입니다. 연봉을 보지 않고 평가합니다.</p>
     </div>
   </section>
 
-  <!-- 2 ─ 왜 원리부터인가 -->
-  <section class="slide" data-title="왜 원리부터인가">
+  <!-- 3 ─ 레벨 -->
+  <section class="slide" data-title="원칙 1 · 레벨">
     <div class="sheet">
-      <div class="eyebrow"><b>들어가며</b></div>
-      <h2>결과를 보고 규칙을 역산하게 두지 않으려고</h2>
-      <p class="lede">
-        인사고과는 계산이 아니라 방향의 문제입니다. 점수 몇 개를 넣어 보고 등급이 어떻게 나오는지로
-        규칙을 짐작하면, 맞게 짐작해도 신뢰가 생기지 않고 틀리게 짐작하면 불신이 남습니다.
-      </p>
-      <div class="keyline">
-        숫자는 나중에 바꿔도 됩니다. 바꾸기 어려운 건 “무엇을 성과로 볼 것인가”입니다.
-      </div>
-      <ul class="plain">
-        <li><span class="tag">원리</span><span><em>7개.</em> 레벨 · 평가 항목 · 채점 · 등급 배분 · 인상률 · 주기 · 변화량</span></li>
-        <li><span class="tag">가드레일</span><span>확정을 막는 3가지와 경고 2가지. 법적 근거를 함께 적었습니다.</span></li>
-        <li><span class="tag">한계</span><span>이 설계가 <em>의도적으로 하지 않는 것</em>도 따로 적었습니다.</span></li>
-        <li><span class="tag">결정</span><span>합의가 필요한 5가지. 여기만 정해지면 나머지는 설정값입니다.</span></li>
-      </ul>
-    </div>
-  </section>
-
-  <!-- 3 ─ 전제 -->
-  <section class="slide" data-title="설계 전제">
-    <div class="sheet">
-      <div class="eyebrow"><b>전제</b> 세 가지</div>
-      <h2>이 세 가지에 동의가 되어야 나머지가 성립합니다</h2>
-      <ol class="steps">
-        <li>
-          <strong>평가의 목적은 순위가 아니라 기대치 합의</strong>
-          <span class="desc">줄 세우기가 목적이면 평가는 연 1회 통보로 끝납니다. 기대치 합의가 목적이면
-            “다음 분기에 무엇이 달라져야 하는가”가 남습니다. 문항과 메모 강제는 후자를 위해 설계했습니다.</span>
-        </li>
-        <li>
-          <strong>리더는 등급까지, 금액은 HR</strong>
-          <span class="desc">평가자가 연봉을 알면 평가가 금액에 끌려갑니다. 반대로 금액을 모르면 시장 대비 위치를
-            반영할 수 없습니다. 그래서 판단을 둘로 나눴습니다 — 리더는 등급과 인상률(%), HR은 금액.</span>
-        </li>
-        <li>
-          <strong>정교함보다 설명 가능성</strong>
-          <span class="desc">면담에서 본인에게 설명할 수 없는 점수는 쓰지 않습니다. 가중치를 화면에 띄우고,
-            성과 인상과 승급 인상을 분리하고, C·D에 근거 메모를 강제하는 이유가 전부 이것입니다.</span>
-        </li>
-      </ol>
-    </div>
-  </section>
-
-  <!-- 4 ─ 원리 1: 레벨 -->
-  <section class="slide" data-title="원리 1 · 레벨">
-    <div class="sheet">
-      <div class="eyebrow"><b>원리 1</b> 레벨</div>
-      <h2>신입과 시니어를 같은 잣대로 재지 않는다</h2>
-      <p class="lede">
-        Mercer IPE, WTW GGS, Korn Ferry Hay는 세부 항목이 다르지만 등급을 가르는 축은 같습니다 —
-        영향 범위, 문제의 모호함, 타인에 대한 책임. 이 축을 5단계로 두고 Radford(Aon)의 P1~P5에
-        맞췄습니다.
-      </p>
+      <div class="eyebrow">원칙 1 · 레벨</div>
+      <h2>신입과 시니어를 같은 기준으로 보지 않습니다</h2>
+      <p class="point">레벨이 다르면 보는 항목도, 비중도 다릅니다.</p>
       <div class="scroll-x">
         <table>
           <thead>
-            <tr>
-              <th>레벨</th><th>영향 범위</th>
-              <th class="num">성과</th><th class="num">전문성</th><th class="num">협업</th><th class="num">리더십</th>
-            </tr>
+            <tr><th>레벨</th><th>맡는 범위</th><th class="num">성과</th><th class="num">전문성</th><th class="num">협업</th><th class="num">리더십</th></tr>
           </thead>
           <tbody>
-            <tr><td class="lvl">L1 신입</td><td class="muted">과업 단위</td><td class="num">25%</td><td class="num">45%</td><td class="num">30%</td><td class="num muted">—</td></tr>
-            <tr><td class="lvl">L2 주니어</td><td class="muted">기능 단위</td><td class="num">30%</td><td class="num">40%</td><td class="num">25%</td><td class="num">5%</td></tr>
-            <tr><td class="lvl">L3 미들</td><td class="muted">제품 영역 단위</td><td class="num">35%</td><td class="num">30%</td><td class="num">20%</td><td class="num">15%</td></tr>
-            <tr><td class="lvl">L4 시니어</td><td class="muted">팀 단위</td><td class="num">30%</td><td class="num">25%</td><td class="num">20%</td><td class="num">25%</td></tr>
-            <tr><td class="lvl">L5 리드</td><td class="muted">조직 단위</td><td class="num">25%</td><td class="num">20%</td><td class="num">20%</td><td class="num">35%</td></tr>
+            <tr><td class="lvl">L1 신입</td><td class="muted">주어진 일</td><td class="num">25</td><td class="num">45</td><td class="num">30</td><td class="num muted">—</td></tr>
+            <tr><td class="lvl">L2 주니어</td><td class="muted">기능 하나</td><td class="num">30</td><td class="num">40</td><td class="num">25</td><td class="num">5</td></tr>
+            <tr><td class="lvl">L3 미들</td><td class="muted">담당 영역</td><td class="num">35</td><td class="num">30</td><td class="num">20</td><td class="num">15</td></tr>
+            <tr><td class="lvl">L4 시니어</td><td class="muted">팀</td><td class="num">30</td><td class="num">25</td><td class="num">20</td><td class="num">25</td></tr>
+            <tr><td class="lvl">L5 리드</td><td class="muted">조직</td><td class="num">25</td><td class="num">20</td><td class="num">20</td><td class="num">35</td></tr>
           </tbody>
         </table>
       </div>
-      <div class="keyline">
-        레벨은 연차가 아니라 <strong>맡고 있는 일의 범위</strong>로 정합니다.
-        연차가 곧 레벨이 되면 직무등급을 둔 의미가 사라집니다.
-      </div>
+      <p class="foot">레벨은 연차가 아니라 맡은 일의 크기로 정합니다. 신입에게는 리더십을 아예 묻지 않습니다.</p>
     </div>
   </section>
 
-  <!-- 5 ─ 3점의 의미 -->
-  <section class="slide" data-title="원리 1 · 3점의 의미">
+  <!-- 4 ─ 채점 -->
+  <section class="slide" data-title="원칙 2 · 채점">
     <div class="sheet">
-      <div class="eyebrow"><b>원리 1</b> 레벨이 바꾸는 것</div>
-      <h2>같은 문항이라도 “3점”의 뜻이 레벨마다 다르다</h2>
-      <p class="lede">
-        1~5점 척도에서 3점은 “기대 충족”입니다. 그런데 그 기대치가 레벨마다 다릅니다.
-        아래는 실제 문항 하나(<span class="muted">멘토링 &amp; 지식 전파</span>)의 레벨별 기대 행동입니다.
-        평가 화면에는 각 문항 아래에 이 문장이 그대로 붙습니다.
-      </p>
-      <div class="block">
-        <div class="anchors">
-          <div><b>L2</b><span>자기가 배운 것을 기록해 남이 쓸 수 있게 한다</span></div>
-          <div><b>L4</b><span>주니어의 성장 속도가 눈에 띄게 빨라진다</span></div>
-          <div><b>L5</b><span>팀의 학습 구조(리뷰·온보딩·문서)를 설계한다</span></div>
-        </div>
+      <div class="eyebrow">원칙 2 · 채점</div>
+      <h2>네 가지를 보고, 레벨대로 비중을 겁니다</h2>
+      <div class="two">
+        <div class="card"><b>성과 · 전문성</b><p>직무마다 문항이 다릅니다. 디자이너와 백엔드는 다른 걸 잘해야 하니까요.</p></div>
+        <div class="card"><b>협업 · 리더십</b><p>전 직군이 같은 문항을 씁니다. 그래야 직군이 달라도 같은 A입니다.</p></div>
       </div>
-      <p class="lede">
-        가중치가 0인 도메인은 문항 자체가 화면에 나오지 않습니다. 신입에게 조직 기여도를 묻고
-        3점을 주는 건 평가가 아니라 잡음이니까요. 그래서 문항 수가 레벨마다 다릅니다 —
-        <span class="muted">L1 8개 · L2 9개 · L3 10개 · L4·L5 11개</span>.
-      </p>
-    </div>
-  </section>
-
-  <!-- 6 ─ 원리 2: 무엇을 보는가 -->
-  <section class="slide" data-title="원리 2 · 평가 항목">
-    <div class="sheet">
-      <div class="eyebrow"><b>원리 2</b> 평가 항목</div>
-      <h2>직무 전문역량과 전사 공통역량을 나눈다</h2>
-      <div class="cols cols-2">
-        <div class="block">
-          <h3>직무별 — 성과 · 전문성</h3>
-          <p>디자이너·FE·BE·AI가 각각 다른 문항을 씁니다. 성과 2문항 + 전문성 3문항.
-            예를 들어 BE의 성과는 “API·기능 납기”와 “서비스 안정성 실적”입니다.</p>
-        </div>
-        <div class="block">
-          <h3>전사 공통 — 협업 · 리더십</h3>
-          <p>직군이 달라도 같은 문항, 같은 기준입니다. 협업 3문항 + 리더십 3문항.
-            이게 직군별로 다르면 “FE의 A와 디자이너의 A가 같은 A인가”에 답할 수 없습니다.</p>
-        </div>
-      </div>
-      <p class="lede">
-        리더십 문항은 레벨에 따라 하나씩 등장합니다. 멘토링은 L2부터, 방향 설정은 L3부터,
-        조직 기여는 L4부터. 기대하지 않는 것을 묻지 않는다는 원칙의 연장입니다.
-      </p>
-    </div>
-  </section>
-
-  <!-- 7 ─ 원리 3: 채점 -->
-  <section class="slide" data-title="원리 3 · 채점">
-    <div class="sheet">
-      <div class="eyebrow"><b>원리 3</b> 채점</div>
-      <h2>전체 평균이 아니라 도메인 평균의 가중합</h2>
-      <p class="lede">
-        도메인마다 문항 수가 다릅니다. 전 문항을 그냥 평균 내면 문항이 많은 도메인이 조용히
-        더 큰 힘을 갖습니다. 그래서 도메인 안에서 먼저 평균을 내고, 그 값에 레벨 가중치를 곱합니다.
-      </p>
       <div class="calc">
-        <span class="muted">L4 시니어 · 백엔드 · 리더십만 2점</span><br>
-        성과&nbsp;&nbsp;&nbsp;&nbsp;5.00 × 30%&nbsp;&nbsp;=&nbsp;&nbsp;1.50<br>
-        전문성&nbsp;&nbsp;5.00 × 25%&nbsp;&nbsp;=&nbsp;&nbsp;1.25<br>
-        협업&nbsp;&nbsp;&nbsp;&nbsp;5.00 × 20%&nbsp;&nbsp;=&nbsp;&nbsp;1.00<br>
-        리더십&nbsp;&nbsp;2.00 × 25%&nbsp;&nbsp;=&nbsp;&nbsp;0.50<br>
-        <span class="sum">합계 <span class="out">4.25</span> &nbsp;→&nbsp; <span class="out">A</span>&nbsp;(5.00이면 S)</span>
+        <span class="muted">L4 시니어 · 다 잘했는데 리더십만 낮은 경우</span><br>
+        성과&nbsp;&nbsp;&nbsp;&nbsp;5.0 × 30%<br>
+        전문성&nbsp;&nbsp;5.0 × 25%<br>
+        협업&nbsp;&nbsp;&nbsp;&nbsp;5.0 × 20%<br>
+        리더십&nbsp;&nbsp;2.0 × 25%<br>
+        <span class="sum">= <span class="out">4.25</span> &nbsp;→&nbsp; <span class="out">A</span> &nbsp;<span class="muted">(다 5점이면 S)</span></span>
       </div>
-      <div class="keyline">
-        시니어가 실무를 아무리 잘해도 리더십이 비면 최고 등급이 나오지 않습니다.
-        레벨이 올라갈수록 “남을 통해 낸 성과”의 비중이 커지는 게 설계 의도입니다.
-      </div>
+      <p class="point">시니어는 혼자 잘하는 것만으로 최고 등급을 받지 못합니다.</p>
     </div>
   </section>
 
-  <!-- 8 ─ 원리 4: 상대평가 -->
-  <section class="slide" data-title="원리 4 · 상대평가">
+  <!-- 5 ─ 상대평가 -->
+  <section class="slide" data-title="원칙 3 · 상대평가">
     <div class="sheet">
-      <div class="eyebrow"><b>원리 4</b> 등급 배분</div>
-      <h2>등급은 집단 안에서 상대적으로 배분한다</h2>
-      <p class="lede">
-        절대 컷오프만 쓰면 평가자 관대화를 막을 장치가 없습니다. 실제로 절대평가만 운영하는 조직은
-        A 이상이 절반을 넘는 일이 흔합니다. 그래서 순위로 배분하되, 상대평가의 부작용을 막는
-        규칙을 셋 붙였습니다.
-      </p>
+      <div class="eyebrow">원칙 3 · 등급</div>
+      <h2>등급은 정해진 비율로 나눕니다</h2>
+      <p class="sub">절대 기준만 쓰면 대부분 A를 받습니다. 그래서 순위로 나눕니다.</p>
       <div class="scroll-x">
         <table>
-          <thead>
-            <tr><th>등급</th><th>의미</th><th class="num">목표 분포</th><th class="num">10명이면</th><th class="num">4명이면</th></tr>
-          </thead>
+          <thead><tr><th>등급</th><th></th><th class="num">비율</th><th class="num">10명이면</th><th class="num">4명이면</th></tr></thead>
           <tbody>
-            <tr><td><span class="grade g-S">S</span></td><td>탁월 — 한 단계 위 레벨의 일을 하고 있다</td><td class="num">10%</td><td class="num">1</td><td class="num">0</td></tr>
-            <tr><td><span class="grade g-A">A</span></td><td>우수 — 기대치를 안정적으로 상회</td><td class="num">25%</td><td class="num">3</td><td class="num">1</td></tr>
-            <tr><td><span class="grade g-B">B</span></td><td>기대 충족 — 대다수가 여기 있는 게 정상</td><td class="num">45%</td><td class="num">5</td><td class="num">2</td></tr>
-            <tr><td><span class="grade g-C">C</span></td><td>개선 필요 — 개선 목표를 문서로 합의</td><td class="num">15%</td><td class="num">1</td><td class="num">1</td></tr>
-            <tr><td><span class="grade g-D">D</span></td><td>미흡 — 레벨 재검토 또는 재배치 논의</td><td class="num">5%</td><td class="num">0</td><td class="num">0</td></tr>
+            <tr><td><span class="grade g-S">S</span></td><td>탁월</td><td class="num">10%</td><td class="big">1</td><td class="big muted">0</td></tr>
+            <tr><td><span class="grade g-A">A</span></td><td>우수</td><td class="num">25%</td><td class="big">3</td><td class="big">1</td></tr>
+            <tr><td><span class="grade g-B">B</span></td><td>기대만큼</td><td class="num">45%</td><td class="big">5</td><td class="big">2</td></tr>
+            <tr><td><span class="grade g-C">C</span></td><td>개선 필요</td><td class="num">15%</td><td class="big">1</td><td class="big">1</td></tr>
+            <tr><td><span class="grade g-D">D</span></td><td>미흡</td><td class="num">5%</td><td class="big muted">0</td><td class="big muted">0</td></tr>
           </tbody>
         </table>
       </div>
-      <div class="note">
-        인원이 적으면 상대평가의 의미가 약해집니다. 4명 조직에서 “S는 10%”는 그냥 0명이라는 뜻입니다.
-      </div>
+      <p class="point">다 잘한 팀에서 억지로 D를 만들지는 않습니다.</p>
+      <p class="foot">4.0점을 넘으면 아무리 순위가 밀려도 B 아래로 내려가지 않습니다. 반대로 2.5점이 안 되면 순위가 높아도 C까지입니다.</p>
     </div>
   </section>
 
-  <!-- 9 ─ 배분 규칙 -->
-  <section class="slide" data-title="원리 4 · 배분 규칙">
+  <!-- 6 ─ 인상률 -->
+  <section class="slide" data-title="원칙 4 · 인상률">
     <div class="sheet">
-      <div class="eyebrow"><b>원리 4</b> 배분 규칙 세 가지</div>
-      <h2>순위만으로 자르면 생기는 문제를 막는 장치</h2>
-      <ol class="steps">
-        <li>
-          <strong>동점자는 반드시 같은 등급</strong>
-          <span class="desc">같은 점수인데 등급이 갈리면 그 자리에서 신뢰가 무너집니다. 동점 그룹이 경계를
-            걸치면 그 그룹의 다수가 속한 등급으로 몰아줍니다. 전원 동점이면 전원 B입니다.</span>
-        </li>
-        <li>
-          <strong>절대 가드 — 분포보다 상식이 앞선다</strong>
-          <span class="desc">순수 상대평가는 전원이 잘한 팀에서도 누군가를 D로 만듭니다.
-            절대 점수 4.0 이상은 C·D로 내리지 않고(최소 B), 2.5 미만은 S·A로 올리지 않습니다(최대 C).</span>
-        </li>
-        <li>
-          <strong>가드를 건 뒤 순위 단조성을 다시 강제</strong>
-          <span class="desc">상한만 걸면 “2.40점이 C인데 2.20점이 B”가 되는 역전이 생깁니다.
-            보정 후 점수가 높은 사람의 등급이 낮은 사람보다 나쁠 수 없도록 한 번 더 훑습니다.</span>
-        </li>
-      </ol>
-      <p class="lede">
-        분포는 목표일 뿐 강제 할당이 아닙니다. 가드가 개입한 건과 경계에서 근소한 차이로 갈린 쌍은
-        캘리브레이션 화면에 따로 표시됩니다 — 조정 회의에서 실제로 다투게 되는 지점이 거기입니다.
+      <div class="eyebrow">원칙 4 · 인상률</div>
+      <h2>등급이 인상률을 정합니다</h2>
+      <div class="scroll-x">
+        <table>
+          <thead><tr><th>등급</th><th class="num">기본 인상률</th><th class="num">조정 범위</th></tr></thead>
+          <tbody>
+            <tr><td><span class="grade g-S">S</span></td><td class="big">8%</td><td class="num muted">7 ~ 10</td></tr>
+            <tr><td><span class="grade g-A">A</span></td><td class="big">6%</td><td class="num muted">5 ~ 7</td></tr>
+            <tr><td><span class="grade g-B">B</span></td><td class="big">4%</td><td class="num muted">3 ~ 5</td></tr>
+            <tr><td><span class="grade g-C">C</span></td><td class="big">2%</td><td class="num muted">1 ~ 3</td></tr>
+            <tr><td><span class="grade g-D">D</span></td><td class="big muted">0%</td><td class="num muted">동결</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="point">승급하면 여기에 따로 더 붙습니다. 성과와 승급을 섞지 않습니다.</p>
+      <p class="foot">
+        전체 평균은 <span class="mono">4.4%</span>로, 2026년 시장 평균 4.6%와 맞춰 뒀습니다.
+        회사 재원을 바꾸면 표 전체가 같이 움직입니다.
       </p>
     </div>
   </section>
 
-  <!-- 10 ─ 원리 5: 인상률 -->
-  <section class="slide" data-title="원리 5 · 인상률">
+  <!-- 7 ─ 주기 -->
+  <section class="slide" data-title="원칙 5 · 주기">
     <div class="sheet">
-      <div class="eyebrow"><b>원리 5</b> 인상률</div>
-      <h2>등급이 정해지면 인상률 밴드가 따라온다</h2>
-      <div class="cols cols-2">
-        <div>
-          <div class="scroll-x">
-            <table>
-              <thead><tr><th>등급</th><th class="num">하한</th><th class="num">기본</th><th class="num">상한</th></tr></thead>
-              <tbody>
-                <tr><td><span class="grade g-S">S</span></td><td class="num">7.0%</td><td class="num">8.0%</td><td class="num">10.0%</td></tr>
-                <tr><td><span class="grade g-A">A</span></td><td class="num">5.0%</td><td class="num">6.0%</td><td class="num">7.0%</td></tr>
-                <tr><td><span class="grade g-B">B</span></td><td class="num">3.0%</td><td class="num">4.0%</td><td class="num">5.0%</td></tr>
-                <tr><td><span class="grade g-C">C</span></td><td class="num">1.0%</td><td class="num">2.0%</td><td class="num">3.0%</td></tr>
-                <tr><td><span class="grade g-D">D</span></td><td class="num muted">0%</td><td class="num muted">0%</td><td class="num muted">0%</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div class="block">
-          <h3>재원과 맞춰 둔 값</h3>
-          <p>목표 분포로 가중하면 기대 인상률이 <strong>4.4%</strong>입니다.
-            2026년 한국 평균 4.6%(대기업 3.8 / 중견 4.5 / 중소 4.8)와 맞습니다.</p>
-          <p>재원을 바꾸면 표 전체가 비례해 움직입니다. 재원 6%로 올리면 밴드도 함께 올라갑니다.</p>
-        </div>
-      </div>
-      <div class="calc">
-        최종 인상률 = <span class="out">성과 인상</span>(등급 밴드) + <span class="out">승급 인상</span><br>
-        <span class="muted">승급 인상 &nbsp;L1→L2 +5% · L2→L3 +7% · L3→L4 +8% · L4→L5 +10%</span>
-      </div>
-      <p class="lede">
-        둘을 합쳐서 하나의 숫자로만 주면 본인에게 “성과 때문인지 승급 때문인지” 설명할 수 없고,
-        이듬해 기준선도 왜곡됩니다. 그래서 끝까지 분리해서 기록합니다.
-      </p>
-    </div>
-  </section>
-
-  <!-- 11 ─ 여기서 끝, 나머지는 HR -->
-  <section class="slide" data-title="원리 5 · HR 경계">
-    <div class="sheet">
-      <div class="eyebrow"><b>원리 5</b> 어디까지가 리더의 몫인가</div>
-      <h2>인상률(%)까지가 리더, 금액은 HR</h2>
-      <p class="lede">
-        같은 A등급이라도 시장 대비 낮게 받는 사람과 높게 받는 사람의 인상률은 달라야 합니다.
-        그 조정에는 연봉 금액이 필요하고, 연봉은 리더가 알 정보가 아닙니다. 그래서 경계를 여기 그었습니다.
-      </p>
-      <div class="cols cols-2">
-        <div class="block">
-          <h3>이 도구가 하는 것</h3>
-          <p>레벨별 기대치로 채점 → 상대평가 등급 → 권장 인상률(%) → 승급 검토.
-            내보내기 파일에도 금액은 들어가지 않습니다.</p>
-        </div>
-        <div class="block">
-          <h3>HR이 이어받는 것</h3>
-          <p>시장 대비 위치(compa-ratio) 반영 — 밴드 하단은 상향, 상단은 하향.
-            최저임금 하한 확인, 포괄임금 계약의 통상임금 재산정, 총 재원 대비 실제 소요액.</p>
-        </div>
-      </div>
-      <div class="keyline">
-        평가자가 연봉을 모르는 건 정보 부족이 아니라 <strong>역할 분리</strong>입니다.
-      </div>
-    </div>
-  </section>
-
-  <!-- 12 ─ 원리 6: 주기 -->
-  <section class="slide" data-title="원리 6 · 주기">
-    <div class="sheet">
-      <div class="eyebrow"><b>원리 6</b> 주기</div>
-      <h2>분기는 기록, 확정은 연 1회</h2>
-      <p class="lede">
-        분기마다 인상률을 정해 반영하면 연 4회 복리가 됩니다. 분기 5%씩이면 한 해에 21.6%입니다.
-        그래서 분기 평가 화면에는 연봉·인상률 입력이 아예 없습니다.
-      </p>
-      <ul class="plain">
-        <li><span class="tag">분기</span><span>레벨별 기대치로 채점하고 근거를 남깁니다. 등급은 <em>잠정값</em> — 아직 채점되지 않은 사람이 들어오면 바뀝니다.</span></li>
-        <li><span class="tag">연 1회</span><span>그 해 분기 평가의 평균으로 연간 점수를 내고, 상대평가로 등급을 확정합니다.</span></li>
-        <li><span class="tag">미평가</span><span>평가하지 않은 분기를 3점으로 채우지 않습니다. 채우면 기록이 없는 사람이 조용히 이득을 봅니다.</span></li>
-        <li><span class="tag">근거</span><span>평가된 분기가 2개 미만이면 경고합니다. 한 분기 결과로 한 해를 확정하면 단기 이슈가 과대 반영됩니다.</span></li>
+      <div class="eyebrow">원칙 5 · 주기</div>
+      <h2>분기에는 기록만, 확정은 1년에 한 번</h2>
+      <p class="point">분기마다 연봉을 올리면 1년에 21%가 됩니다.</p>
+      <ul class="list">
+        <li><span class="n">·</span><span class="t">분기 평가에는 연봉 칸이 없습니다
+          <span class="d">점수를 매기고 근거를 남기는 자리입니다. 등급은 아직 임시입니다.</span></span></li>
+        <li><span class="n">·</span><span class="t">안 한 분기는 채우지 않습니다
+          <span class="d">빈 분기를 3점으로 메우면 기록을 안 남긴 사람이 이득을 봅니다.</span></span></li>
+        <li><span class="n">·</span><span class="t">지난번보다 올랐는지를 같이 봅니다
+          <span class="d">3.6점이 좋은 점수인지는 혼자서는 알 수 없습니다.</span></span></li>
       </ul>
-    </div>
-  </section>
-
-  <!-- 13 ─ 원리 7: 변화량 -->
-  <section class="slide" data-title="원리 7 · 변화량">
-    <div class="sheet">
-      <div class="eyebrow"><b>원리 7</b> 변화량</div>
-      <h2>절대 점수보다 직전 대비 변화</h2>
-      <p class="lede">
-        3.6점이 좋은 점수인지 나쁜 점수인지는 혼자서는 답이 안 나옵니다. 지난번이 3.2였다면 좋은 흐름이고,
-        4.1이었다면 살펴봐야 할 신호입니다. 그래서 모든 화면에 직전 대비가 붙습니다.
-      </p>
-      <div class="cols cols-3">
-        <div class="block">
-          <h3>점수</h3>
-          <p><span class="mono">+0.40 (+12.5%)</span><br>
-            절대 변화와 변화율을 함께 봅니다.</p>
-        </div>
-        <div class="block">
-          <h3>등급</h3>
-          <p><span class="grade g-B">B</span> → <span class="grade g-A">A</span><br>
-            등급이 움직였는지, 유지됐는지.</p>
-        </div>
-        <div class="block">
-          <h3>인상률</h3>
-          <p><span class="mono">+2.0%p</span><br>
-            작년 대비 몇 %p 올랐는지.</p>
-        </div>
+      <div class="deltas">
+        <span>점수 +0.40</span>
+        <span>등급 B → A</span>
+        <span>인상률 +2.0%p</span>
       </div>
-      <p class="lede">
-        분기 평가는 직전 분기와, 연간 확정은 직전 연도와 비교합니다.
-        표에도 열로 들어가고 내보내기 파일에도 담깁니다.
-      </p>
     </div>
   </section>
 
-  <!-- 14 ─ 가드레일 -->
-  <section class="slide" data-title="가드레일">
+  <!-- 8 ─ 막아둔 것 -->
+  <section class="slide" data-title="막아둔 것">
     <div class="sheet">
-      <div class="eyebrow"><b>가드레일</b> 무엇을 막는가</div>
-      <h2>나중에 설명할 수 없게 되는 지점에서 멈춰 세운다</h2>
-      <ul class="plain">
-        <li><span class="tag stop">확정 차단</span><span><strong>인상률 음수(삭감).</strong>
-          이미 정한 연봉액의 삭감은 취업규칙 개정만으로 되지 않고 개별 동의가 필요합니다
-          <em>(근로기준법 §94, 대법원 2023.5.11. 전원합의체)</em>. 동결(0%)까지만 여기서 다룹니다.</span></li>
-        <li><span class="tag stop">확정 차단</span><span><strong>C·D 등급인데 근거 메모가 없음.</strong>
-          저성과 처우는 다툼이 생기면 회사가 합리성을 소명해야 합니다.
-          관찰한 사실, 이미 전달한 피드백, 합의한 개선 목표를 남기게 했습니다.</span></li>
-        <li><span class="tag stop">확정 차단</span><span><strong>추천 인상률을 벗어났는데 사유가 없음.</strong>
-          예외를 기록 없이 남기면 다음 사이클에 기준이 무너집니다.</span></li>
-        <li><span class="tag warn">경고</span><span>평가된 분기가 2개 미만인 채로 연간 확정</span></li>
-        <li><span class="tag warn">경고</span><span>승급 없이 15% 이상 인상 — 보통 레벨이 잘못 매겨져 있었다는 뜻입니다</span></li>
+      <div class="eyebrow">가드레일</div>
+      <h2>이 세 가지는 아예 저장이 안 됩니다</h2>
+      <ul class="stops">
+        <li><span class="x">01</span><span><strong>연봉을 깎는 것.</strong> 삭감은 본인 동의가 있어야 합니다. 동결(0%)까지만 됩니다.</span></li>
+        <li><span class="x">02</span><span><strong>C·D를 주면서 근거를 안 쓰는 것.</strong> 나중에 문제가 되면 회사가 설명해야 합니다.</span></li>
+        <li><span class="x">03</span><span><strong>추천 인상률을 벗어나면서 이유를 안 쓰는 것.</strong> 예외가 쌓이면 기준이 없어집니다.</span></li>
       </ul>
-      <p class="lede">
-        금액 관련 법정 점검(최저임금 하한 등)은 여기 없습니다. 이 도구가 금액을 모르기 때문이고,
-        HR 단계에서 확인할 항목으로 넘겼습니다.
-      </p>
+      <ul class="stops warn">
+        <li><span class="x">!</span><span>분기 기록이 두 개도 안 되는데 1년치를 확정할 때 — 경고만 뜹니다</span></li>
+        <li><span class="x">!</span><span>승급 없이 15% 넘게 올릴 때 — 보통은 레벨이 잘못 매겨져 있다는 뜻입니다</span></li>
+      </ul>
+      <p class="foot">근거: 근로기준법 제94조, 대법원 2023. 5. 11. 전원합의체 판결.</p>
     </div>
   </section>
 
-  <!-- 15 ─ 하지 않는 것 -->
-  <section class="slide" data-title="하지 않는 것">
+  <!-- 9 ─ 못 하는 것 -->
+  <section class="slide" data-title="못 하는 것">
     <div class="sheet">
-      <div class="eyebrow"><b>한계</b> 이 설계가 하지 않는 것</div>
-      <h2>못 하는 것과 안 하기로 한 것</h2>
-      <div class="cols cols-2">
-        <div class="block">
-          <h3>안 하기로 한 것</h3>
-          <p><strong>금액을 다루지 않습니다.</strong> 대신 시장 대비 조정이 HR 단계에 의존합니다.
-            HR이 그 조정을 하지 않으면 밴드 하단에 있는 사람이 계속 하단에 머뭅니다.</p>
-        </div>
-        <div class="block">
-          <h3>구조적 한계</h3>
-          <p><strong>등급은 비교 집단에 의존합니다.</strong> 집단을 전체에서 직무별로 바꾸면
-            같은 점수라도 등급이 달라집니다. 이건 상대평가를 쓰는 한 없앨 수 없는 성질입니다.</p>
-        </div>
-        <div class="block">
-          <h3>규모의 한계</h3>
-          <p>인원이 적을수록 분포가 의미를 잃습니다. 5명 조직의 목표 분포는 사실상
-            “A 1명, B 2~3명, 나머지”에 가깝습니다.</p>
-        </div>
-        <div class="block">
-          <h3>아직 없는 것</h3>
-          <p><strong>평가자 편향 통제 장치가 없습니다.</strong> 리더가 여러 명일 때
-            누가 후하고 누가 박한지를 비교하는 지표가 아직 없습니다. 캘리브레이션 회의로만 잡힙니다.</p>
-        </div>
+      <div class="eyebrow">한계</div>
+      <h2>이 체계가 못 하는 것</h2>
+      <div class="two">
+        <div class="card"><b>인원이 적으면 비율이 무의미합니다</b><p>4명 조직에서 "S는 10%"는 그냥 0명이라는 뜻입니다.</p></div>
+        <div class="card"><b>누구와 비교하냐에 따라 등급이 바뀝니다</b><p>전체로 볼지 직무별로 볼지 정해야 합니다. 바꾸면 결과가 달라집니다.</p></div>
+        <div class="card"><b>후한 리더와 박한 리더를 못 가려냅니다</b><p>평가자별 편차를 잡는 지표가 아직 없습니다. 조정 회의로만 걸러집니다.</p></div>
+        <div class="card"><b>시장 대비 조정은 HR에 달려 있습니다</b><p>연봉을 모르니 여기서는 못 합니다. HR이 안 하면 낮게 받는 사람이 계속 낮게 받습니다.</p></div>
       </div>
-      <div class="keyline">
-        정성 평가의 품질은 결국 메모에 달려 있습니다. 도구는 메모를 강제할 수 있을 뿐,
-        메모의 내용을 좋게 만들지는 못합니다.
-      </div>
+      <p class="point">결국 평가의 질은 리더가 남기는 메모에 달려 있습니다.</p>
     </div>
   </section>
 
-  <!-- 16 ─ 결정 -->
-  <section class="slide" data-title="결정이 필요한 다섯 가지">
+  <!-- 10 ─ 결정 -->
+  <section class="slide" data-title="정해주실 다섯 가지">
     <div class="sheet">
-      <div class="eyebrow"><b>결정</b> 합의가 필요한 다섯 가지</div>
-      <h2>여기만 정해지면 나머지는 설정값입니다</h2>
-      <ol class="steps">
-        <li>
-          <strong>목표 분포를 어떻게 잡을 것인가</strong>
-          <span class="desc">현재 <span class="grade g-S">S</span> 10 · <span class="grade g-A">A</span> 25 ·
-            <span class="grade g-B">B</span> 45 · <span class="grade g-C">C</span> 15 ·
-            <span class="grade g-D">D</span> 5. C·D를 실제로 줄 것인지가 이 조직에서 가장 큰 결정입니다.</span>
-        </li>
-        <li>
-          <strong>누구와 누구를 비교할 것인가</strong>
-          <span class="desc">전체 / 직무별 / 레벨별. 인원이 적으면 전체가 현실적이지만, 직군 특성이 크게 다르면
-            직무별이 공정합니다. 바꾸면 등급이 바뀝니다.</span>
-        </li>
-        <li>
-          <strong>절대 가드 임계값</strong>
-          <span class="desc">지금은 4.0 이상 최소 B, 2.5 미만 최대 C. 이 값이 상대평가와 절대평가 사이의
-            균형점을 정합니다.</span>
-        </li>
-        <li>
-          <strong>인상 재원</strong>
-          <span class="desc">기본값 4.5%는 시장 평균에 맞춘 값입니다. 회사가 실제로 쓸 수 있는 재원으로 바꾸면
-            밴드 전체가 따라 움직입니다.</span>
-        </li>
-        <li>
-          <strong>레벨은 누가, 언제 정하는가</strong>
-          <span class="desc">레벨이 평가 문항과 인상률을 모두 좌우합니다. 승급 심사 주기와 판정 주체를 정하지 않으면
-            레벨이 연차를 따라가고, 그러면 직무등급을 둔 의미가 없어집니다.</span>
-        </li>
-      </ol>
+      <div class="eyebrow">결정</div>
+      <h2>다섯 가지만 정해주시면 됩니다</h2>
+      <ul class="list">
+        <li><span class="n">1</span><span class="t">C·D를 실제로 줄 것인가
+          <span class="d">가장 큰 결정입니다. 안 주기로 하면 상대평가를 쓸 이유가 절반 사라집니다.</span></span></li>
+        <li><span class="n">2</span><span class="t">누구와 누구를 비교할 것인가
+          <span class="d">전체 / 직무별 / 레벨별. 인원이 적으면 전체가 현실적입니다.</span></span></li>
+        <li><span class="n">3</span><span class="t">등급 비율을 어떻게 잡을 것인가
+          <span class="d">지금은 10 · 25 · 45 · 15 · 5 입니다.</span></span></li>
+        <li><span class="n">4</span><span class="t">인상 재원을 몇 %로 잡을 것인가
+          <span class="d">지금은 시장 평균에 맞춘 4.5%입니다.</span></span></li>
+        <li><span class="n">5</span><span class="t">레벨은 누가, 언제 정할 것인가
+          <span class="d">이걸 안 정하면 레벨이 연차를 따라가고, 그러면 이 체계는 의미가 없어집니다.</span></span></li>
+      </ul>
     </div>
   </section>
 
 </div>
 
 <nav class="bar" aria-label="슬라이드 이동">
-  <span class="count" id="count">1 / 16</span>
+  <span class="count" id="count">1 / 10</span>
   <span class="title" id="title">표지</span>
   <button type="button" id="mode" aria-pressed="false">문서 모드</button>
   <span class="nav">
@@ -873,7 +501,6 @@
     var count = document.getElementById('count');
     var title = document.getElementById('title');
     var current = 0;
-
     var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     function paint(i) {
@@ -889,12 +516,9 @@
       paint(i);
     }
 
-    // 스크롤·스와이프로 넘겼을 때도 표시가 따라오게 한다
     if ('IntersectionObserver' in window) {
       var io = new IntersectionObserver(function (entries) {
-        entries.forEach(function (e) {
-          if (e.isIntersecting) paint(slides.indexOf(e.target));
-        });
+        entries.forEach(function (e) { if (e.isIntersecting) paint(slides.indexOf(e.target)); });
       }, { root: deck, threshold: 0.5 });
       slides.forEach(function (s) { io.observe(s); });
     }
