@@ -10,6 +10,12 @@ cd "$ROOT"
 echo "▶ 빌드"
 npm run build
 
+# 내부 문서(슬라이드)도 같은 사이트에 함께 올린다
+if [ -f "$ROOT/docs/design-principles.html" ]; then
+  cp "$ROOT/docs/design-principles.html" "$ROOT/dist/design-principles.html"
+  echo "▶ 문서 포함: /design-principles.html"
+fi
+
 echo "▶ gh-pages 워크트리 준비"
 # dist/ 는 vite 가 매 빌드마다 비우므로, 배포용 git 이력은 별도 워크트리에 둔다
 git fetch --quiet origin gh-pages
